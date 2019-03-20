@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$this->object = \Aimeos\MShop\Price\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$this->object = \Aimeos\MShop\Price\Manager\Factory::create( \TestHelperMShop::getContext() );
 	}
 
 	protected function tearDown()
@@ -30,7 +30,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -39,9 +45,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$result = $this->object->getResourceType();
 
 		$this->assertContains( 'price', $result );
-		$this->assertContains( 'price/type', $result );
 		$this->assertContains( 'price/lists', $result );
-		$this->assertContains( 'price/lists/type', $result );
 	}
 
 
@@ -61,16 +65,14 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCreateItemType()
 	{
-		$item = $this->object->createItem( 'default', 'product' );
-
-		$this->assertNotNull( $item->getTypeId() );
+		$item = $this->object->createItem( ['price.type' => 'default'] );
 		$this->assertEquals( 'default', $item->getType() );
 	}
 
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'price.value', 12.00 ),
 			$search->compare( '==', 'price.editor', $this->editor )
@@ -84,7 +86,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$itemB = $this->object->getItem( $item->getId() );
 		$this->assertEquals( 19.00, $itemB->getTaxRate() );
-		$this->assertNotEquals( '', $itemB->getTypeName() );
 	}
 
 
@@ -122,7 +123,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertTrue( $itemSaved->getType() !== null );
 		$this->assertEquals( $item->getId(), $itemSaved->getId() );
 		$this->assertEquals( $item->getSiteId(), $itemSaved->getSiteId() );
-		$this->assertEquals( $item->getTypeId(), $itemSaved->getTypeId() );
+		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getDomain(), $itemSaved->getDomain() );
 		$this->assertEquals( $item->getLabel(), $itemSaved->getLabel() );
 		$this->assertEquals( $item->getCurrencyId(), $itemSaved->getCurrencyId() );
@@ -140,7 +141,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertTrue( $itemUpd->getType() !== null );
 		$this->assertEquals( $itemExp->getId(), $itemUpd->getId() );
 		$this->assertEquals( $itemExp->getSiteId(), $itemUpd->getSiteId() );
-		$this->assertEquals( $itemExp->getTypeId(), $itemUpd->getTypeId() );
+		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getDomain(), $itemUpd->getDomain() );
 		$this->assertEquals( $itemExp->getLabel(), $itemUpd->getLabel() );
 		$this->assertEquals( $itemExp->getCurrencyId(), $itemUpd->getCurrencyId() );
@@ -171,19 +172,27 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSearchItems()
 	{
+		$search = $this->object->createSearch();
+		$search->setConditions( $search->compare( '==', 'price.value', '99.99' ) );
+		$item = current( $this->object->searchItems( $search, ['customer'] ) );
+
+		if( $item && ( $listItem = current( $item->getListItems( 'customer', 'test' ) ) ) === false ) {
+			throw new \RuntimeException( 'No list item found' );
+		}
+
 		$total = 0;
 		$search = $this->object->createSearch();
 
 		$expr = [];
 		$expr[] = $search->compare( '!=', 'price.id', null );
 		$expr[] = $search->compare( '!=', 'price.siteid', null );
-		$expr[] = $search->compare( '!=', 'price.typeid', null );
-		$expr[] = $search->compare( '==', 'price.domain', 'product' );
+		$expr[] = $search->compare( '==', 'price.type', 'default' );
+		$expr[] = $search->compare( '==', 'price.domain', 'attribute' );
 		$expr[] = $search->compare( '>=', 'price.label', '' );
 		$expr[] = $search->compare( '==', 'price.currencyid', 'EUR' );
-		$expr[] = $search->compare( '==', 'price.quantity', 100 );
-		$expr[] = $search->compare( '==', 'price.value', '580.00' );
-		$expr[] = $search->compare( '==', 'price.costs', '20.00' );
+		$expr[] = $search->compare( '==', 'price.quantity', 1 );
+		$expr[] = $search->compare( '==', 'price.value', '99.99' );
+		$expr[] = $search->compare( '==', 'price.costs', '9.99' );
 		$expr[] = $search->compare( '==', 'price.rebate', '0.00' );
 		$expr[] = $search->compare( '==', 'price.taxrate', '19.00' );
 		$expr[] = $search->compare( '==', 'price.status', 1 );
@@ -191,31 +200,39 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '>=', 'price.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'price.editor', $this->editor );
 
-		$expr[] = $search->compare( '!=', 'price.type.id', null );
-		$expr[] = $search->compare( '!=', 'price.type.siteid', null );
-		$expr[] = $search->compare( '==', 'price.type.domain', 'product' );
-		$expr[] = $search->compare( '==', 'price.type.code', 'default' );
-		$expr[] = $search->compare( '==', 'price.type.label', 'Standard' );
-		$expr[] = $search->compare( '==', 'price.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'price.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'price.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'price.type.editor', $this->editor );
+		$param = ['customer','test', '0'];
+		$expr[] = $search->compare( '==', $search->createFunction( 'price:has', $param ), null );
+
+		$param = ['customer','test', $listItem->getRefId()];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'price:has', $param ), null );
+
+		$param = ['customer','test'];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'price:has', $param ), null );
+
+		$param = ['customer'];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'price:has', $param ), null );
 
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$results = $this->object->searchItems( $search, [], $total );
 
 		$this->assertEquals( 1, count( $results ) );
+	}
 
 
-		//search without base criteria
+	public function testSearchItemsTotal()
+	{
+		$total = 0;
 		$search = $this->object->createSearch();
 		$search->setConditions( $search->compare( '==', 'price.editor', $this->editor ) );
 		$search->setSlice( 0, 10 );
 		$results = $this->object->searchItems( $search, [], $total );
 		$this->assertEquals( 10, count( $results ) );
-		$this->assertEquals( 24, $total );
+		$this->assertEquals( 27, $total );
+	}
 
-		//search with base criteria
+
+	public function testSearchItemsBase()
+	{
 		$search = $this->object->createSearch( true );
 		$conditions = array(
 			$search->compare( '==', 'price.editor', $this->editor ),
@@ -223,7 +240,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		);
 		$search->setConditions( $search->combine( '&&', $conditions ) );
 		$results = $this->object->searchItems( $search );
-		$this->assertEquals( 22, count( $results ) );
+		$this->assertEquals( 25, count( $results ) );
 
 		foreach( $results as $itemId => $item ) {
 			$this->assertEquals( $itemId, $item->getId() );

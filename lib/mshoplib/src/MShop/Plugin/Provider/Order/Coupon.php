@@ -33,20 +33,25 @@ class Coupon
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'addProduct.after' );
-		$p->addListener( $this->getObject(), 'editProduct.after' );
-		$p->addListener( $this->getObject(), 'deleteProduct.after' );
-		$p->addListener( $this->getObject(), 'setAddress.after' );
-		$p->addListener( $this->getObject(), 'deleteAddress.after' );
-		$p->addListener( $this->getObject(), 'addService.after' );
-		$p->addListener( $this->getObject(), 'deleteService.after' );
-		$p->addListener( $this->getObject(), 'addCoupon.after' );
-		$p->addListener( $this->getObject(), 'deleteCoupon.after' );
-		$p->addListener( $this->getObject(), 'setOrder.before' );
-		$p->addListener( $this->getObject(), 'check.after' );
+		$plugin = $this->getObject();
+
+		$p->attach( $plugin, 'addProduct.after' );
+		$p->attach( $plugin, 'deleteProduct.after' );
+		$p->attach( $plugin, 'setProducts.after' );
+		$p->attach( $plugin, 'addAddress.after' );
+		$p->attach( $plugin, 'deleteAddress.after' );
+		$p->attach( $plugin, 'setAddresses.after' );
+		$p->attach( $plugin, 'addService.after' );
+		$p->attach( $plugin, 'deleteService.after' );
+		$p->attach( $plugin, 'setServices.after' );
+		$p->attach( $plugin, 'addCoupon.after' );
+		$p->attach( $plugin, 'deleteCoupon.after' );
+
+		return $this;
 	}
 
 
@@ -56,33 +61,33 @@ class Coupon
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
+	 * @throws \Aimeos\MShop\Plugin\Provider\Exception if checks fail
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
 
 		$notAvailable = [];
-		$couponManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'coupon' );
+		$context = $this->getContext();
+
+		$manager = \Aimeos\MShop::create( $context, 'coupon' );
+		$codeManager = \Aimeos\MShop::create( $context, 'coupon/code' );
 
 		foreach( $order->getCoupons() as $code => $products )
 		{
-			$search = $couponManager->createSearch( true );
+			$search = $manager->createSearch( true )->setSlice( 0, 1 );
 			$expr = array(
 				$search->compare( '==', 'coupon.code.code', $code ),
+				$codeManager->createSearch( true )->getConditions(),
 				$search->getConditions(),
 			);
 			$search->setConditions( $search->combine( '&&', $expr ) );
-			$search->setSlice( 0, 1 );
+			$items = $manager->searchItems( $search );
 
-			$results = $couponManager->searchItems( $search );
-
-			if( ( $couponItem = reset( $results ) ) !== false )
-			{
-				$couponProvider = $couponManager->getProvider( $couponItem, $code );
-				$couponProvider->updateCoupon( $order );
-			}
-			else
-			{
+			if( ( $item = reset( $items ) ) !== false ) {
+				$manager->getProvider( $item, $code )->update( $order );
+			} else {
 				$notAvailable[$code] = 'coupon.gone';
 			}
 		}
@@ -94,7 +99,7 @@ class Coupon
 			throw new \Aimeos\MShop\Plugin\Provider\Exception( $msg, -1, null, $codes );
 		}
 
-		return true;
+		return $value;
 	}
 
 }

@@ -99,7 +99,7 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	/**
 	 * Returns a list of attributes which can be used in the search method.
 	 *
-	 * @return array List of search attribute objects implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes()
 	{
@@ -142,9 +142,10 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	/**
 	 * Deletes a node and its descendants from the storage.
 	 *
-	 * @param integer|null $id Delete the node with the ID and all nodes below
+	 * @param string|null $id Delete the node with the ID and all nodes below
+	 * @return \Aimeos\MW\Tree\Manager\Iface Manager object for method chaining
 	 */
-	public function deleteNode( $id = null )
+	public function deleteNode( $id )
 	{
 		$node = $this->getNode( $id, \Aimeos\MW\Tree\Manager\Base::LEVEL_ONE );
 
@@ -179,13 +180,15 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 			$this->dbm->release( $conn, $this->dbname );
 			throw $e;
 		}
+
+		return $this;
 	}
 
 
 	/**
 	 * Returns a node and its descendants depending on the given resource.
 	 *
-	 * @param integer|null $id Retrieve nodes starting from the given ID
+	 * @param string|null $id Retrieve nodes starting from the given ID
 	 * @param integer $level One of the level constants from \Aimeos\MW\Tree\Manager\Base
 	 * @param \Aimeos\MW\Criteria\Iface|null $condition Optional criteria object with conditions
 	 * @return \Aimeos\MW\Tree\Node\Iface Node, maybe with subnodes
@@ -263,8 +266,9 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	 * Inserts a new node before the given reference node to the parent in the storage.
 	 *
 	 * @param \Aimeos\MW\Tree\Node\Iface $node New node that should be inserted
-	 * @param mixed $parentId ID of the parent node where the new node should be inserted below (null for root node)
-	 * @param mixed $refId ID of the node where the node should be inserted before (null to append)
+	 * @param string|null $parentId ID of the parent node where the new node should be inserted below (null for root node)
+	 * @param string|null $refId ID of the node where the node should be inserted before (null to append)
+	 * @return \Aimeos\MW\Tree\Node\Iface Updated node item
 	 */
 	public function insertNode( \Aimeos\MW\Tree\Node\Iface $node, $parentId = null, $refId = null )
 	{
@@ -343,6 +347,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 			$this->dbm->release( $conn, $this->dbname );
 			throw $e;
 		}
+
+		return $node;
 	}
 
 
@@ -352,7 +358,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	 * @param string|null $id ID of the node that should be moved
 	 * @param string|null $oldParentId ID of the old parent node which currently contains the node that should be removed
 	 * @param string|null $newParentId ID of the new parent node where the node should be moved to
-	 * @param null|string $newRefId ID of the node where the node should be inserted before (null to append)
+	 * @param string|null $newRefId ID of the node where the node should be inserted before (null to append)
+	 * @return \Aimeos\MW\Tree\Manager\Iface Manager object for method chaining
 	 */
 	public function moveNode( $id, $oldParentId, $newParentId, $newRefId = null )
 	{
@@ -487,6 +494,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 			$this->dbm->release( $conn, $this->dbname );
 			throw $e;
 		}
+
+		return $this;
 	}
 
 
@@ -497,6 +506,7 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	 * the tree layout by adding, moving or deleting nodes.
 	 *
 	 * @param \Aimeos\MW\Tree\Node\Iface $node Tree node object
+	 * @return \Aimeos\MW\Tree\Node\Iface Updated node item
 	 */
 	public function saveNode( \Aimeos\MW\Tree\Node\Iface $node )
 	{
@@ -526,6 +536,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 			$this->dbm->release( $conn, $this->dbname );
 			throw $e;
 		}
+
+		return $node;
 	}
 
 
@@ -533,8 +545,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	 * Retrieves a list of nodes from the storage matching the given search criteria.
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
-	 * @param integer|null $id Search nodes starting at the node with the given ID
-	 * @return array List of nodes implementing \Aimeos\MW\Tree\Node\Iface
+	 * @param string|null $id Search nodes starting at the node with the given ID
+	 * @return \Aimeos\MW\Tree\Node\Iface[] List of tree nodes
 	 */
 	public function searchNodes( \Aimeos\MW\Criteria\Iface $search, $id = null )
 	{
@@ -601,8 +613,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	/**
 	 * Returns a list if node IDs, that are in the path of given node ID.
 	 *
-	 * @param integer $id ID of node to get the path for
-	 * @return array Associative list of nodes implementing \Aimeos\MW\Tree\Node\Iface with IDs as keys
+	 * @param string $id ID of node to get the path for
+	 * @return \Aimeos\MW\Tree\Node\Iface[] List of tree nodes
 	 */
 	public function getPath( $id )
 	{
@@ -685,8 +697,8 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	/**
 	 * Creates a new node object.
 	 *
-	 * @param array List of attributes that should be stored in the new node
-	 * @param array List of children implementing \Aimeos\MW\Tree\Node\Iface
+	 * @param array $values List of attributes that should be stored in the new node
+	 * @param \Aimeos\MW\Tree\Node\Iface[] $children List of child nodes
 	 * @return \Aimeos\MW\Tree\Node\Iface Empty node object
 	 */
 	protected function createNodeBase( array $values = [], array $children = [] )
@@ -763,9 +775,9 @@ class DBNestedSet extends \Aimeos\MW\Tree\Manager\Base
 	 * Returns a single node identified by its ID.
 	 *
 	 * @param string $id Unique ID
+	 * @return \Aimeos\MW\Tree\Node\Iface Tree node
 	 * @throws \Aimeos\MW\Tree\Exception If node is not found
 	 * @throws \Exception If anything unexcepted occurs
-	 * @return \Aimeos\MW\Tree\Node\Iface Tree node
 	 */
 	protected function getNodeById( $id )
 	{

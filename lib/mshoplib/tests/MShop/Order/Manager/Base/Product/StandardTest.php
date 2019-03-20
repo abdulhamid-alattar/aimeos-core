@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregate()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.product.stocktype' );
 
 		$this->assertEquals( 3, count( $result ) );
@@ -46,7 +46,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateAvg()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.product.type', 'order.base.product.price', 'avg' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -58,7 +58,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateSum()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.product.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.product.type', 'order.base.product.quantity', 'sum' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -69,7 +69,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -114,6 +120,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '==', 'order.base.product.siteid', $siteid );
 		$expr[] = $search->compare( '!=', 'order.base.product.baseid', null );
 		$expr[] = $search->compare( '==', 'order.base.product.orderproductid', null );
+		$expr[] = $search->compare( '==', 'order.base.product.orderaddressid', null );
 		$expr[] = $search->compare( '>=', 'order.base.product.type', '' );
 		$expr[] = $search->compare( '!=', 'order.base.product.productid', null );
 		$expr[] = $search->compare( '==', 'order.base.product.prodcode', 'CNE' );
@@ -173,7 +180,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'order.base.product.prodcode', 'CNE' ),
 			$search->compare( '==', 'order.base.product.editor', $this->editor )
@@ -229,6 +236,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getSiteId(), $itemSaved->getSiteId() );
 		$this->assertEquals( $item->getBaseId(), $itemSaved->getBaseId() );
 		$this->assertEquals( $item->getOrderProductId(), $itemSaved->getOrderProductId() );
+		$this->assertEquals( $item->getOrderAddressId(), $itemSaved->getOrderAddressId() );
 		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getProductId(), $itemSaved->getProductId() );
 		$this->assertEquals( $item->getProductCode(), $itemSaved->getProductCode() );
@@ -252,6 +260,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getSiteId(), $itemUpd->getSiteId() );
 		$this->assertEquals( $itemExp->getBaseId(), $itemUpd->getBaseId() );
 		$this->assertEquals( $itemExp->getOrderProductId(), $itemUpd->getOrderProductId() );
+		$this->assertEquals( $itemExp->getOrderAddressId(), $itemUpd->getOrderAddressId() );
 		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getProductId(), $itemUpd->getProductId() );
 		$this->assertEquals( $itemExp->getProductCode(), $itemUpd->getProductCode() );

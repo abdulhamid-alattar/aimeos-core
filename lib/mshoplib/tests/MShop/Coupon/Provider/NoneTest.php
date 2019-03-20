@@ -18,8 +18,8 @@ class NoneTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$context = \TestHelperMShop::getContext();
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $context );
-		$item = \Aimeos\MShop\Coupon\Manager\Factory::createManager( $context )->createItem();
+		$priceManager = \Aimeos\MShop\Price\Manager\Factory::create( $context );
+		$item = \Aimeos\MShop\Coupon\Manager\Factory::create( $context )->createItem();
 
 		// Don't create order base item by createItem() as this would already register the plugins
 		$this->orderBase = new \Aimeos\MShop\Order\Item\Base\Standard( $priceManager->createItem(), $context->getLocale() );
@@ -34,8 +34,8 @@ class NoneTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testAddCoupon()
+	public function testUpdate()
 	{
-		$this->object->addCoupon( $this->orderBase );
+		$this->object->update( $this->orderBase );
 	}
 }

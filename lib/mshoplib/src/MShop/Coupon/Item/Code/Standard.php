@@ -150,7 +150,7 @@ class Standard
 	/**
 	 * Sets a new starting point of time, in which the code is available.
 	 *
-	 * @param string New ISO date in YYYY-MM-DD hh:mm:ss format
+	 * @param string $date New ISO date in YYYY-MM-DD hh:mm:ss format
 	 * @return \Aimeos\MShop\Coupon\Item\Code\Iface Coupon code item for chaining method calls
 	 */
 	public function setDateStart( $date )
@@ -216,7 +216,7 @@ class Standard
 	 * Sets the new reference for the coupon code
 	 * This can be an arbitrary value used by the coupon provider
 	 *
-	 * @param string Arbitrary value depending on the coupon provider
+	 * @param string $ref Arbitrary value depending on the coupon provider
 	 * @return \Aimeos\MShop\Coupon\Item\Code\Iface Coupon code item for chaining method calls
 	 */
 	public function setRef( $ref )
@@ -252,36 +252,37 @@ class Standard
 		return parent::isAvailable()
 			&& ( $this->getDateStart() === null || $this->getDateStart() < $this->values['date'] )
 			&& ( $this->getDateEnd() === null || $this->getDateEnd() > $this->values['date'] );
-
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Coupon\Item\Code\Iface Coupon code item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'coupon.code.count': $this->setCount( $value ); break;
-				case 'coupon.code.code': $this->setCode( $value ); break;
-				case 'coupon.code.parentid': $this->setParentId( $value ); break;
-				case 'coupon.code.datestart': $this->setDateStart( $value ); break;
-				case 'coupon.code.dateend': $this->setDateEnd( $value ); break;
-				case 'coupon.code.ref': $this->setRef( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'coupon.code.parentid': !$private ?: $item = $item->setParentId( $value ); break;
+				case 'coupon.code.datestart': $item = $item->setDateStart( $value ); break;
+				case 'coupon.code.dateend': $item = $item->setDateEnd( $value ); break;
+				case 'coupon.code.count': $item = $item->setCount( $value ); break;
+				case 'coupon.code.code': $item = $item->setCode( $value ); break;
+				case 'coupon.code.ref': $item = $item->setRef( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -295,10 +296,10 @@ class Standard
 	{
 		$list = parent::toArray( $private );
 
-		$list['coupon.code.code'] = $this->getCode();
-		$list['coupon.code.count'] = $this->getCount();
 		$list['coupon.code.datestart'] = $this->getDateStart();
 		$list['coupon.code.dateend'] = $this->getDateEnd();
+		$list['coupon.code.count'] = $this->getCount();
+		$list['coupon.code.code'] = $this->getCode();
 		$list['coupon.code.ref'] = $this->getRef();
 
 		if( $private === true ) {

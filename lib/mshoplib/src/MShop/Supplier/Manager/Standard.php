@@ -19,9 +19,10 @@ namespace Aimeos\MShop\Supplier\Manager;
  * @subpackage Supplier
  */
 class Standard
-	extends \Aimeos\MShop\Common\Manager\ListRef\Base
+	extends \Aimeos\MShop\Common\Manager\Base
 	implements \Aimeos\MShop\Supplier\Manager\Iface, \Aimeos\MShop\Common\Manager\Factory\Iface
 {
+	use \Aimeos\MShop\Common\Manager\ListRef\Traits;
 	use \Aimeos\MShop\Common\Manager\AddressRef\Traits;
 
 
@@ -87,6 +88,17 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 			'public' => false,
 		),
+		'supplier:has' => array(
+			'code' => 'supplier:has()',
+			'internalcode' => '(
+				SELECT msupli_has."id" FROM mshop_supplier_list AS msupli_has
+				WHERE msup."id" = msupli_has."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Supplier has list item, parameter(<domain>[,<list type>[,<reference ID>)]]',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
 	);
 
 
@@ -99,13 +111,44 @@ class Standard
 	{
 		parent::__construct( $context );
 		$this->setResourceName( 'db-supplier' );
+
+		$self = $this;
+		$locale = $context->getLocale();
+
+		$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
+		$level = $context->getConfig()->get( 'mshop/supplier/manager/sitemode', $level );
+
+		$siteIds = [$locale->getSiteId()];
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_PATH ) {
+			$siteIds = array_merge( $siteIds, $locale->getSitePath() );
+		}
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_SUBTREE ) {
+			$siteIds = array_merge( $siteIds, $locale->getSiteSubTree() );
+		}
+
+
+		$this->searchConfig['supplier:has']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'msupli_has."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'msupli_has."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
 	}
 
 
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Supplier\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -114,19 +157,17 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/supplier/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/supplier/manager/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Supplier\Item\Iface New supplier item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['supplier.siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -137,12 +178,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/supplier/manager/submanagers';
-
 		return $this->getResourceTypeBase( 'supplier', $path, array( 'address', 'lists' ), $withsub );
 	}
 
@@ -151,7 +191,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -174,14 +214,15 @@ class Standard
 		 */
 		$path = 'mshop/supplier/manager/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'address', 'lists' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, ['address'], $withsub );
 	}
 
 
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Supplier\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -216,7 +257,8 @@ class Standard
 		 * @see mshop/supplier/manager/standard/count/ansi
 		 */
 		$path = 'mshop/supplier/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -239,7 +281,7 @@ class Standard
 	/**
 	 * Returns the supplier item object specificed by its ID.
 	 *
-	 * @param integer $id Unique supplier ID referencing an existing supplier
+	 * @param string $id Unique supplier ID referencing an existing supplier
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Supplier\Item\Iface Returns the supplier item of the given id
@@ -256,7 +298,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MShop\Supplier\Item\Iface $item Supplier item object
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Supplier\Item\Iface Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -434,7 +476,7 @@ class Standard
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param integer|null &$total Number of items that are available in total
-	 * @return array List of supplier items implementing \Aimeos\MShop\Supplier\Item\Iface
+	 * @return \Aimeos\MShop\Supplier\Item\Iface[] List of supplier items
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
@@ -630,14 +672,14 @@ class Standard
 
 
 	/**
-	 * creates a search object and sets base criteria
+	 * Creates a search critera object
 	 *
-	 * @param boolean $default
-	 * @return \Aimeos\MW\Criteria\Iface
+	 * @param boolean $default Add default criteria (optional)
+	 * @return \Aimeos\MW\Criteria\Iface New search criteria object
 	 */
-	public function createSearch($default = false)
+	public function createSearch( $default = false )
 	{
-		if ($default) {
+		if ( $default ) {
 			return $this->createSearchBase('supplier');
 		}
 
@@ -649,9 +691,9 @@ class Standard
 	 * Creates a new supplier item.
 	 *
 	 * @param array $values List of attributes for supplier item
-	 * @param array $listitems Associative list of list item IDs as keys and \Aimeos\MShop\Common\Item\List\Iface as values
-	 * @param array $refItems Associative list of item IDs as keys and \Aimeos\MShop\Common\Item\Iface as values
-	 * @param array $addresses List of address items of the supplier item
+	 * @param \Aimeos\MShop\Common\Item\Lists\Iface[] $listitems List of list items
+	 * @param \Aimeos\MShop\Common\Item\Iface[] $refItems List of referenced items
+	 * @param \Aimeos\MShop\Common\Item\Address\Iface[] $addresses List of address items
 	 * @return \Aimeos\MShop\Supplier\Item\Iface New supplier item
 	 */
 	protected function createItemBase( array $values = [], array $listitems = [], array $refItems = [], array $addresses = [] )

@@ -90,13 +90,13 @@ class Weight
 
 		// basket can contain a product several times in different basket items
 		// product IDs are only those of articles, selections and bundles, not of the variants and bundled products
-		foreach( $basket->getProducts() as $basketItem )
+		foreach( $basket->getProducts() as $orderProduct )
 		{
-			$qty = $basketItem->getQuantity();
-			$code = $basketItem->getProductCode();
+			$qty = $orderProduct->getQuantity();
+			$code = $orderProduct->getProductCode();
 			$prodMap[$code] = ( isset( $prodMap[$code] ) ? $prodMap[$code] + $qty : $qty );
 
-			foreach( $basketItem->getProducts() as $prodItem ) // calculate bundled products
+			foreach( $orderProduct->getProducts() as $prodItem ) // calculate bundled products
 			{
 				$qty = $prodItem->getQuantity();
 				$code = $prodItem->getProductCode();
@@ -104,7 +104,7 @@ class Weight
 			}
 		}
 
-		if ($this->checkWeightScale( $this->getWeight( $prodMap ) ) === false) {
+		if ( $this->checkWeightScale( $this->getWeight( $prodMap ) ) === false ) {
 			return false;
 		}
 
@@ -145,7 +145,7 @@ class Weight
 	{
 		$weight = 0;
 
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' );
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'product' );
 		$search = $manager->createSearch( true )->setSlice( 0, count( $prodMap ) );
 		$expr = array(
 			$search->compare( '==', 'product.code', array_keys( $prodMap ) ),

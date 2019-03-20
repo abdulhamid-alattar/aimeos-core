@@ -78,6 +78,24 @@ interface Iface
 
 
 	/**
+	 * Injects additional global configuration for the backend.
+	 *
+	 * It's used for adding additional backend configuration from the application
+	 * like the URLs to redirect to.
+	 *
+	 * Supported redirect URLs are:
+	 * - payment.url-success
+	 * - payment.url-failure
+	 * - payment.url-cancel
+	 * - payment.url-update
+	 *
+	 * @param array $config Associative list of config keys and their value
+	 * @return \Aimeos\MShop\Service\Provider\Iface Provider object for chaining method calls
+	 */
+	public function injectGlobalConfigBE( array $config );
+
+
+	/**
 	 * Checks if payment provider can be used based on the basket content.
 	 * Checks for country, currency, address, scoring, etc. should be implemented in separate decorators
 	 *
@@ -110,7 +128,7 @@ interface Iface
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem Order service item that will be added to the basket
 	 * @param array $attributes Attribute key/value pairs entered by the customer during the checkout process
-	 * @return null
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item with attributes added
 	 */
 	public function setConfigFE( \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem, array $attributes );
 
@@ -137,7 +155,8 @@ interface Iface
 	/**
 	 * Updates the order status sent by payment gateway notifications
 	 *
-	 * @param \Psr\Http\Message\ServerRequestInterface Request object
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object
+	 * @param \Psr\Http\Message\ResponseInterface $response Request object
 	 * @return \Psr\Http\Message\ResponseInterface Response object
 	 */
 	public function updatePush( \Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response );
@@ -146,7 +165,7 @@ interface Iface
 	/**
 	 * Updates the orders for whose status updates have been received by the confirmation page
 	 *
-	 * @param ServerRequestInterface $request Request object with parameters and request body
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object with parameters and request body
 	 * @param \Aimeos\MShop\Order\Item\Iface $orderItem Order item that should be updated
 	 * @return \Aimeos\MShop\Order\Item\Iface Updated order item
 	 * @throws \Aimeos\MShop\Service\Exception If updating the orders failed

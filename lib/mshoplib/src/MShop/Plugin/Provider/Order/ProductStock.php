@@ -38,10 +38,12 @@ class ProductStock
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'check.after' );
+		$p->attach( $this->getObject(), 'check.after' );
+		return $this;
 	}
 
 
@@ -51,13 +53,13 @@ class ProductStock
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
 	 * @throws \Aimeos\MShop\Plugin\Provider\Exception if checks fail
-	 * @return bool true if checks succeed
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
 		if( ( $value & \Aimeos\MShop\Order\Item\Base\Base::PARTS_PRODUCT ) === 0 ) {
-			return true;
+			return $value;
 		}
 
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
@@ -68,7 +70,7 @@ class ProductStock
 			throw new \Aimeos\MShop\Plugin\Provider\Exception( $msg, -1, null, array( 'product' => $outOfStock ) );
 		}
 
-		return true;
+		return $value;
 	}
 
 
@@ -82,10 +84,10 @@ class ProductStock
 	{
 		$productCodes = $stockTypes = $stockMap = [];
 
-		foreach( $order->getProducts() as $orderProductItem )
+		foreach( $order->getProducts() as $orderProduct )
 		{
-			$productCodes[] = $orderProductItem->getProductCode();
-			$stockTypes[] = $orderProductItem->getStockType();
+			$productCodes[] = $orderProduct->getProductCode();
+			$stockTypes[] = $orderProduct->getStockType();
 		}
 
 		foreach( $this->getStockItems( $productCodes, $stockTypes ) as $stockItem ) {
@@ -109,32 +111,35 @@ class ProductStock
 	protected function checkStockLevels( \Aimeos\MShop\Order\Item\Base\Iface $order, array $stockMap )
 	{
 		$outOfStock = [];
+		$products = $order->getProducts();
 
-		foreach( $order->getProducts() as $position => $orderProductItem )
+		foreach( $products as $pos => $orderProduct )
 		{
 			$stocklevel = 0;
+			$type = $orderProduct->getStockType();
+			$code = $orderProduct->getProductCode();
 
-			if( isset( $stockMap[ $orderProductItem->getProductCode() ] )
-				&& array_key_exists( $orderProductItem->getStockType(), $stockMap[ $orderProductItem->getProductCode() ] )
+			if( isset( $stockMap[ $code ] )
+				&& array_key_exists( $type, $stockMap[$code] )
 			) {
-				if( ( $stocklevel = $stockMap[ $orderProductItem->getProductCode() ][ $orderProductItem->getStockType() ] ) === null ) {
+				if( ( $stocklevel = $stockMap[$code][$type] ) === null ) {
 					continue;
 				}
 
-				if( $stocklevel >= $orderProductItem->getQuantity() )
+				if( $stocklevel >= $orderProduct->getQuantity() )
 				{
-					$stockMap[ $orderProductItem->getProductCode() ][ $orderProductItem->getStockType() ] -= $orderProductItem->getQuantity();
+					$stockMap[$code][$type] -= $orderProduct->getQuantity();
 					continue;
 				}
 			}
 
-			if( $stocklevel > 0 ) {
-				$orderProductItem->setQuantity( $stocklevel ); // update quantity to actual stock level
+			if( $stocklevel > 0 ) { // update quantity to actual stock level
+				$order->addProduct( $orderProduct->setQuantity( $stocklevel ), $pos );
 			} else {
-				$order->deleteProduct( $position );
+				$order->deleteProduct( $pos );
 			}
 
-			$outOfStock[$position] = 'stock.notenough';
+			$outOfStock[$pos] = 'stock.notenough';
 		}
 
 		return $outOfStock;
@@ -150,12 +155,12 @@ class ProductStock
 	 */
 	protected function getStockItems( $codes, $types )
 	{
-		$stockManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'stock' );
+		$stockManager = \Aimeos\MShop::create( $this->getContext(), 'stock' );
 
 		$search = $stockManager->createSearch();
 		$expr = array(
 			$search->compare( '==', 'stock.productcode', $codes ),
-			$search->compare( '==', 'stock.type.code', $types ),
+			$search->compare( '==', 'stock.type', $types ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 

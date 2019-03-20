@@ -22,18 +22,7 @@ class CatalogRebuildTestIndex extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['AttributeListAddTestData', 'ProductAddTestData', 'CatalogListAddTestData', 'SupplierListAddTestData'];
 	}
 
 
@@ -46,7 +35,7 @@ class CatalogRebuildTestIndex extends \Aimeos\MW\Setup\Task\Base
 
 		$this->msg( 'Rebuilding index for test data', 0 );
 
-		$indexManager = \Aimeos\MShop\Index\Manager\Factory::createManager( $this->additional );
+		$indexManager = \Aimeos\MShop\Index\Manager\Factory::create( $this->additional );
 
 		$indexManager->rebuildIndex();
 		$indexManager->optimize();

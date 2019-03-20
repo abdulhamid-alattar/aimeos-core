@@ -22,18 +22,7 @@ class MediaAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'MediaAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MediaAddTestData'];
 	}
 
 
@@ -45,7 +34,7 @@ class MediaAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding media property test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'media-property.php';
@@ -67,11 +56,10 @@ class MediaAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addMediaPropertyData( array $testdata )
 	{
-		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
 		$mediaPropertyManager = $mediaManager->getSubManager( 'property', 'Standard' );
 		$mediaPropertyTypeManager = $mediaPropertyManager->getSubManager( 'type', 'Standard' );
 
-		$typeIds = [];
 		$type = $mediaPropertyTypeManager->createItem();
 		$prodIds = $this->getMediaIds( $mediaManager );
 
@@ -86,21 +74,16 @@ class MediaAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 			$type->setStatus( $dataset['status'] );
 
 			$mediaPropertyTypeManager->saveItem( $type );
-			$typeIds[ $key ] = $type->getId();
 		}
 
 		$prodProperty = $mediaPropertyManager->createItem();
 		foreach( $testdata['media/property'] as $key => $dataset )
 		{
-			if( !isset( $typeIds[ $dataset['typeid'] ] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No media property type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$prodProperty->setId( null );
 			$prodProperty->setParentId( $prodIds[ $dataset['parentid'] ] );
-			$prodProperty->setTypeId( $typeIds[ $dataset['typeid'] ] );
 			$prodProperty->setLanguageId( $dataset['langid'] );
 			$prodProperty->setValue( $dataset['value'] );
+			$prodProperty->setType( $dataset['type'] );
 
 			$mediaPropertyManager->saveItem( $prodProperty, false );
 		}
@@ -125,6 +108,5 @@ class MediaAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 		}
 
 		return $entry;
-
 	}
 }

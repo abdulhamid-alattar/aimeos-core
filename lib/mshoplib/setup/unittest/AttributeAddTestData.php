@@ -22,18 +22,7 @@ class AttributeAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class AttributeAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding attribute test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'attribute.php';
@@ -68,10 +57,9 @@ class AttributeAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addAttributeData( array $testdata )
 	{
-		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::create( $this->additional, 'Standard' );
 		$attributeTypeManager = $attributeManager->getSubManager( 'type', 'Standard' );
 
-		$atypeIds = [];
 		$atype = $attributeTypeManager->createItem();
 
 		$attributeManager->begin();
@@ -85,19 +73,14 @@ class AttributeAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$atype->setStatus( $dataset['status'] );
 
 			$attributeTypeManager->saveItem( $atype );
-			$atypeIds[$key] = $atype->getId();
 		}
 
 		$attribute = $attributeManager->createItem();
 		foreach( $testdata['attribute'] as $key => $dataset )
 		{
-			if( !isset( $atypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No attribute type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$attribute->setId( null );
 			$attribute->setDomain( $dataset['domain'] );
-			$attribute->setTypeId( $atypeIds[$dataset['typeid']] );
+			$attribute->setType( $dataset['type'] );
 			$attribute->setCode( $dataset['code'] );
 			$attribute->setLabel( $dataset['label'] );
 			$attribute->setStatus( $dataset['status'] );

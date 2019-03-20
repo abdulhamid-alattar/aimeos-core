@@ -31,7 +31,7 @@ class Factory
 	 * @throws \Aimeos\MShop\Customer\Exception|\Aimeos\MShop\Exception If requested manager
 	 * implementation couldn't be found or initialisation fails
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/customer/manager/name
 		 * Class name of the used customer manager implementation
@@ -79,7 +79,7 @@ class Factory
 		$iface = \Aimeos\MShop\Customer\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Customer\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/customer/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the customer manager

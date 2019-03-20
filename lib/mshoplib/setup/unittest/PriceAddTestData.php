@@ -22,18 +22,7 @@ class PriceAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class PriceAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding price test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'price.php';
@@ -68,10 +57,9 @@ class PriceAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addPriceData( array $testdata )
 	{
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$priceManager = \Aimeos\MShop\Price\Manager\Factory::create( $this->additional, 'Standard' );
 		$priceTypeManager = $priceManager->getSubManager( 'type', 'Standard' );
 
-		$ptypeIds = [];
 		$ptype = $priceTypeManager->createItem();
 
 		$priceManager->begin();
@@ -85,19 +73,14 @@ class PriceAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$ptype->setStatus( $dataset['status'] );
 
 			$priceTypeManager->saveItem( $ptype );
-			$ptypeIds[$key] = $ptype->getId();
 		}
 
 		$price = $priceManager->createItem();
 		foreach( $testdata['price'] as $key => $dataset )
 		{
-			if( !isset( $ptypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No price type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$price->setId( null );
 			$price->setCurrencyId( $dataset['currencyid'] );
-			$price->setTypeId( $ptypeIds[$dataset['typeid']] );
+			$price->setType( $dataset['type'] );
 			$price->setDomain( $dataset['domain'] );
 			$price->setLabel( $dataset['label'] );
 			$price->setQuantity( $dataset['quantity'] );

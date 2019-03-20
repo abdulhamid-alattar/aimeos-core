@@ -18,7 +18,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$manager = \Aimeos\MShop\Attribute\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Attribute\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$this->object = $manager->getSubManager( 'property' )->getSubManager('type');
 	}
 
@@ -31,7 +31,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
@@ -43,9 +43,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetResourceType()
 	{
-		$result = $this->object->getResourceType();
-
-		$this->assertContains( 'attribute/property/type', $result );
+		$this->assertContains( 'attribute/property/type', $this->object->getResourceType() );
 	}
 
 
@@ -59,7 +57,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'attribute.property.type.code', 'size' ),
 			$search->compare( '==', 'attribute.property.type.editor', $this->editor )

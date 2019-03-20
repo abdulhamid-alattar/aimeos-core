@@ -22,9 +22,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			'text.id' => 10,
 			'text.siteid' => 99,
 			'text.languageid' => 'de',
-			'text.typeid' => 1,
 			'text.type' => 'name',
-			'text.typename' => 'Name',
 			'text.label' => 'unittest label',
 			'text.domain' => 'product',
 			'text.content' => 'unittest text',
@@ -73,31 +71,19 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testGetTypeId()
-	{
-		$this->assertEquals( 1, $this->object->getTypeId() );
-	}
-
-
-	public function testSetTypeId()
-	{
-		$return = $this->object->setTypeId( 2 );
-
-		$this->assertInstanceOf( \Aimeos\MShop\Text\Item\Iface::class, $return );
-		$this->assertEquals( 2, $this->object->getTypeId() );
-		$this->assertTrue( $this->object->isModified() );
-	}
-
-
 	public function testGetType()
 	{
 		$this->assertEquals( 'name', $this->object->getType() );
 	}
 
 
-	public function testGetTypeName()
+	public function testSetType()
 	{
-		$this->assertEquals( 'Name', $this->object->getTypeName() );
+		$return = $this->object->setType( 'test' );
+
+		$this->assertInstanceOf( \Aimeos\MShop\Text\Item\Iface::class, $return );
+		$this->assertEquals( 'test', $this->object->getType() );
+		$this->assertTrue( $this->object->isModified() );
 	}
 
 
@@ -210,11 +196,9 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$item = new \Aimeos\MShop\Text\Item\Standard();
 
-		$list = array(
+		$list = $entries = array(
 			'text.id' => 1,
-			'text.typeid' => 2,
 			'text.type' => 'test',
-			'text.typename' => 'Test',
 			'text.languageid' => 'de',
 			'text.label' => 'test item',
 			'text.domain' => 'product',
@@ -222,20 +206,17 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			'text.status' => 0,
 		);
 
-		$unknown = $item->fromArray( $list );
+		$item = $item->fromArray( $entries, true );
 
-		$this->assertEquals( [], $unknown );
-
+		$this->assertEquals( [], $entries );
 		$this->assertEquals( $list['text.id'], $item->getId() );
-		$this->assertEquals( $list['text.typeid'], $item->getTypeId() );
+		$this->assertEquals( $list['text.type'], $item->getType() );
 		$this->assertEquals( $list['text.languageid'], $item->getLanguageId() );
 		$this->assertEquals( $list['text.label'], $item->getLabel() );
 		$this->assertEquals( $list['text.domain'], $item->getDomain() );
 		$this->assertEquals( $list['text.content'], $item->getContent() );
 		$this->assertEquals( $list['text.status'], $item->getStatus() );
 		$this->assertNull( $item->getSiteId() );
-		$this->assertNull( $item->getTypeName() );
-		$this->assertNull( $item->getType() );
 	}
 
 
@@ -248,8 +229,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $this->object->getId(), $data['text.id'] );
 		$this->assertEquals( $this->object->getSiteId(), $data['text.siteid'] );
 		$this->assertEquals( $this->object->getLanguageId(), $data['text.languageid'] );
-		$this->assertEquals( $this->object->getTypeName(), $data['text.typename'] );
-		$this->assertEquals( $this->object->getTypeId(), $data['text.typeid'] );
 		$this->assertEquals( $this->object->getType(), $data['text.type'] );
 		$this->assertEquals( $this->object->getLabel(), $data['text.label'] );
 		$this->assertEquals( $this->object->getDomain(), $data['text.domain'] );

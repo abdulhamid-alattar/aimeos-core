@@ -24,16 +24,11 @@ abstract class Base
 
 
 	/**
-	 * Translates the sort key into the name required by the storage
+	 * Returns the left side of the compare expression.
 	 *
-	 * @param array $translations Associative list of variable or column names that should be translated
-	 * @return string Translated name (with replaced parameters if the name is an expression function)
+	 * @return string Name of variable or column that should be compared
 	 */
-	public function translate( array $translations )
-	{
-		$name = $this->getName();
-		return $this->translateName( $name, $translations );
-	}
+	abstract public function getName();
 
 
 	/**
@@ -46,6 +41,19 @@ abstract class Base
 	public static function createFunction( $name, array $params )
 	{
 		return $name . '(' . self::createSignature( $params ) . ')';
+	}
+
+
+	/**
+	 * Translates the sort key into the name required by the storage
+	 *
+	 * @param array $translations Associative list of variable or column names that should be translated
+	 * @return string Translated name (with replaced parameters if the name is an expression function)
+	 */
+	public function translate( array $translations )
+	{
+		$name = $this->getName();
+		return $this->translateName( $name, $translations );
 	}
 
 
@@ -69,12 +77,13 @@ abstract class Base
 			{
 				case 'boolean':
 				case 'integer':
+					$list[] = (int) $param; break;
 				case 'double':
-					$list[] = $param; break;
+					$list[] = (double) $param; break;
 				case 'array':
 					$list[] = '[' . self::createSignature( $param ) . ']'; break;
 				default:
-					$list[] = '"' . $param . '"';
+					$list[] = '"' . str_replace( ['"', '[', ']'], ' ', $param ) . '"';
 			}
 		}
 
@@ -94,7 +103,9 @@ abstract class Base
 	protected function isFunction( &$name, array &$params )
 	{
 		$len = strlen( $name );
-		if( $len === 0 || $name[$len-1] !== ')' ) { return false; }
+		if( $len === 0 || $name[$len-1] !== ')' ) {
+			return false;
+		}
 
 		if( ( $pos = strpos( $name, '(' ) ) === false ) {
 			throw new \Aimeos\MW\Common\Exception( 'Missing opening bracket for function syntax' );
@@ -128,9 +139,9 @@ abstract class Base
 	 * Replaces the parameters in nested arrays
 	 *
 	 * @param array $list Multi-dimensional associative array of values including positional parameter, e.g. "$1"
-	 * @param array $find List of strings to search for, e.g. ['$1', '$2']
-	 * @param array $replace List of strings to replace by, e.g. ['val1', 'val2']
-	 * @return Multi-dimensional associative array with parameters replaced
+	 * @param string[] $find List of strings to search for, e.g. ['$1', '$2']
+	 * @param string[] $replace List of strings to replace by, e.g. ['val1', 'val2']
+	 * @return array Multi-dimensional associative array with parameters replaced
 	 */
 	protected function replaceParameter( array $list, array $find, array $replace )
 	{
@@ -184,7 +195,7 @@ abstract class Base
 			return str_replace( $find, $params, $source );
 		}
 
-		if( isset( $translations[$name] ) ) {
+		if( array_key_exists( $name, $translations ) ) {
 			return $translations[$name];
 		}
 
@@ -212,13 +223,11 @@ abstract class Base
 	/**
 	 * Sets the new plugins for translating values.
 	 *
-	 * @param array $plugins Associative list of names and the plugin implementing \Aimeos\MW\Criteria\Plugin\Iface
+	 * @param \Aimeos\MW\Criteria\Plugin\Iface[] $plugins Associative list of names as keys and plugin items as values
 	 */
 	protected function setPlugins( array $plugins )
 	{
-		\Aimeos\MW\Common\Base::checkClassList(\Aimeos\MW\Criteria\Plugin\Iface::class, $plugins);
-
-		$this->plugins = $plugins;
+		$this->plugins = \Aimeos\MW\Common\Base::checkClassList( \Aimeos\MW\Criteria\Plugin\Iface::class, $plugins );
 	}
 
 
@@ -258,7 +267,7 @@ abstract class Base
 			if( isset( $string[0] ) && $string[0] == '[' )
 			{
 				$items = [];
-				$pattern = '/("[^"]*"|[0-9]+\.[0-9]+|[0-9]+),?/';
+				$pattern = '/("[^"]*"|[0-9]+\.[0-9]+|[0-9]+|null),?/';
 
 				if( preg_match_all( $pattern, $string, $items ) === false ) {
 					throw new \Aimeos\MW\Common\Exception( 'Unable to extract function parameters' );

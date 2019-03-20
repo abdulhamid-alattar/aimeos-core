@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$supplierManager = \Aimeos\MShop\Supplier\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$supplierManager = \Aimeos\MShop\Supplier\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$this->object = $supplierManager->getSubManager( 'address' );
 	}
 
@@ -32,7 +32,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
@@ -62,7 +62,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '~=', 'supplier.address.company', 'Example company' ),
 			$search->compare( '==', 'supplier.address.editor', $this->editor ),

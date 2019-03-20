@@ -85,7 +85,7 @@ class SQL
 	 *
 	 * @param array $types Associative list of variable or column names as keys and their corresponding types
 	 * @param array $translations Associative list of variable or column names that should be translated
-	 * @param array $plugins Associative list of item names and plugins implementing \Aimeos\MW\Criteria\Plugin\Iface
+	 * @param \Aimeos\MW\Criteria\Plugin\Iface[] $plugins Associative list of item names as keys and plugin objects as values
 	 * @param array $funcs Associative list of item names and functions modifying the conditions
 	 * @return mixed Expression that evaluates to a boolean result
 	 */
@@ -128,10 +128,12 @@ class SQL
 			case \Aimeos\MW\DB\Statement\Base::PARAM_FLOAT:
 				$value = (float) $value; break;
 			case \Aimeos\MW\DB\Statement\Base::PARAM_STR:
-				if( $operator == '~=' ) {
-					$value = '\'%' . $this->conn->escape( $value ) . '%\''; break;
+				if( $operator == '~=' )
+				{
+					$value = '\'%' . $this->conn->escape( $value ) . '%\'';
+					break;
 				}
-			default:
+			default: // all other operators: escape in default case
 				$value = '\'' . $this->conn->escape( $value ) . '\'';
 		}
 

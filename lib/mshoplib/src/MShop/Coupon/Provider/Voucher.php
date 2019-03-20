@@ -35,48 +35,6 @@ class Voucher
 
 
 	/**
-	 * Adds the result of a coupon to the order base instance.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Basic order of the customer
-	 */
-	public function addCoupon( \Aimeos\MShop\Order\Item\Base\Iface $base )
-	{
-		$context = $this->getContext();
-
-		if( ( $productCode = $this->getConfigValue( 'voucher.productcode' ) ) === null )
-		{
-			$msg = $context->getI18n()->dt( 'mshop', 'Invalid configuration for coupon provider "%1$s", needs "%2$s"' );
-			$msg = sprintf( $msg, $this->getItemBase()->getProvider(), 'voucher.productcode' );
-			throw new \Aimeos\MShop\Coupon\Exception( $msg );
-		}
-
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'coupon/code' );
-		$orderProductId = $manager->findItem( $this->getCode() )->getRef();
-
-
-		$status = [\Aimeos\MShop\Order\Item\Base::PAY_AUTHORIZED, \Aimeos\MShop\Order\Item\Base::PAY_RECEIVED];
-		$this->checkVoucher( $orderProductId, $status );
-
-
-		$orderProduct = $this->getOrderProductItem( $orderProductId, $base->getPrice()->getCurrencyId() );
-		$value = $orderProduct->getPrice()->getValue() + $orderProduct->getPrice()->getRebate();
-		$usedRebate = $this->getUsedRebate( $this->getCode() );
-		$rebate = $value - $usedRebate;
-
-		if( $rebate <= 0 )
-		{
-			$msg = $context->getI18n()->dt( 'mshop', 'No more credit available for voucher "%1$s"' );
-			throw new \Aimeos\MShop\Coupon\Exception( sprintf( $msg, $this->getCode() ) );
-		}
-
-		$orderProducts = $this->createMonetaryRebateProducts( $base, $productCode, $rebate );
-		$orderProducts = $this->setOrderAttributeRebate( $orderProducts, $rebate );
-
-		$base->addCoupon( $this->getCode(), $orderProducts );
-	}
-
-
-	/**
 	 * Checks the backend configuration attributes for validity.
 	 *
 	 * @param array $attributes Attributes added by the shop owner in the administraton interface
@@ -102,16 +60,58 @@ class Voucher
 
 
 	/**
+	 * Updates the result of a coupon to the order base instance.
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Basic order of the customer
+	 * @return \Aimeos\MShop\Coupon\Provider\Iface Provider object for method chaining
+	 */
+	public function update( \Aimeos\MShop\Order\Item\Base\Iface $base )
+	{
+		$context = $this->getContext();
+
+		if( ( $prodcode = $this->getConfigValue( 'voucher.productcode' ) ) === null )
+		{
+			$msg = $context->getI18n()->dt( 'mshop', 'Invalid configuration for coupon provider "%1$s", needs "%2$s"' );
+			$msg = sprintf( $msg, $this->getItem()->getProvider(), 'voucher.productcode' );
+			throw new \Aimeos\MShop\Coupon\Exception( $msg );
+		}
+
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'coupon/code' );
+		$orderProductId = $manager->findItem( $this->getCode() )->getRef();
+
+		$status = [\Aimeos\MShop\Order\Item\Base::PAY_AUTHORIZED, \Aimeos\MShop\Order\Item\Base::PAY_RECEIVED];
+		$this->checkVoucher( $orderProductId, $status );
+
+		$orderProduct = $this->getOrderProductItem( $orderProductId, $base->getPrice()->getCurrencyId() );
+		$value = $orderProduct->getPrice()->getValue() + $orderProduct->getPrice()->getRebate();
+		$usedRebate = $this->getUsedRebate( $this->getCode() );
+		$rebate = $value - $usedRebate;
+
+		if( $rebate <= 0 )
+		{
+			$msg = $context->getI18n()->dt( 'mshop', 'No more credit available for voucher "%1$s"' );
+			throw new \Aimeos\MShop\Coupon\Exception( sprintf( $msg, $this->getCode() ) );
+		}
+
+		$orderProducts = $this->createRebateProducts( $base, $prodcode, $rebate );
+		$orderProducts = $this->setOrderAttributeRebate( $orderProducts, $rebate );
+
+		$base->setCoupon( $this->getCode(), $orderProducts );
+		return $this;
+	}
+
+
+	/**
 	 * Checks if the voucher for the given order product ID is still available
 	 *
 	 * @param string $orderProductId Order product ID of the bought voucher
-	 * @param array $status List of allowed payment status values
+	 * @param integer[] $status List of allowed payment status values
 	 * @throws \Aimeos\MShop\Coupon\Exception If voucher isn't available any more
 	 */
 	protected function checkVoucher( $orderProductId, array $status )
 	{
 		$context = $this->getContext();
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'order' );
+		$manager = \Aimeos\MShop::create( $context, 'order' );
 
 		$search = $manager->createSearch();
 		$expr = [
@@ -131,12 +131,12 @@ class Voucher
 	/**
 	 * Filters the order base IDs and removes those order which aren't payed
 	 *
-	 * @param array $baseIds List of order base IDs to check
-	 * @return array List of filtered order Base IDs
+	 * @param string[] $baseIds List of order base IDs to check
+	 * @return string[] List of filtered order base IDs
 	 */
 	protected function filterOrderBaseIds( array $baseIds )
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order' );
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'order' );
 
 		$search = $manager->createSearch();
 		$expr = [
@@ -165,7 +165,7 @@ class Voucher
 	protected function getOrderProductItem( $orderProductId, $currencyId )
 	{
 		$context = $this->getContext();
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'order/base/product' );
+		$manager = \Aimeos\MShop::create( $context, 'order/base/product' );
 
 		$orderProduct = $manager->getItem( $orderProductId );
 		$currency = $orderProduct->getPrice()->getCurrencyId();
@@ -189,7 +189,7 @@ class Voucher
 	protected function getUsedRebate( $code )
 	{
 		$context = $this->getContext();
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'order/base/coupon' );
+		$manager = \Aimeos\MShop::create( $context, 'order/base/coupon' );
 
 		$search = $manager->createSearch()->setSlice( 0, 0x7fffffff );
 		$search->setConditions( $search->compare( '==', 'order.base.coupon.code', $code ) );
@@ -204,7 +204,7 @@ class Voucher
 
 
 
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'order/base/product' );
+		$manager = \Aimeos\MShop::create( $context, 'order/base/product' );
 
 		$search = $manager->createSearch();
 		$expr = [
@@ -226,12 +226,12 @@ class Voucher
 	 * Adds an attribute with the remaining rebate to the order products
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $orderProducts Order product items
-	 * @param float $remaining Remaining rebate
-	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] Modified order product items
+	 * @param double $remaining Remaining rebate
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface[] Modified order product items
 	 */
 	protected function setOrderAttributeRebate( array $orderProducts, $remaining )
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order/base/product/attribute' );
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'order/base/product/attribute' );
 
 		$orderAttrItem = $manager->createItem();
 		$orderAttrItem->setValue( number_format( $remaining, 2, '.', '' ) );

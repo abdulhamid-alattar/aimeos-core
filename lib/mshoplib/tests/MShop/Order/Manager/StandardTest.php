@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregate()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.type' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -46,7 +46,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateAvg()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.cmonth', 'order.base.price', 'avg' );
 
 		$this->assertEquals( 1, count( $result ) );
@@ -57,7 +57,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateSum()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.cmonth', 'order.base.price', 'sum' );
 
 		$this->assertEquals( 1, count( $result ) );
@@ -68,7 +68,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateTimes()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$search->setSortations( array( $search->sort( '-', 'order.cdate' ) ) );
 		$result = $this->object->aggregate( $search, 'order.cmonth' );
 
@@ -80,7 +80,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateAddress()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.address.countryid' );
 
 		$this->assertEquals( 1, count( $result ) );
@@ -92,7 +92,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateMonth()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.type' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -103,7 +103,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -133,7 +139,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$status = \Aimeos\MShop\Order\Item\Base::PAY_RECEIVED;
 
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'order.statuspayment', $status ),
 			$search->compare( '==', 'order.editor', $this->editor )
@@ -222,7 +228,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSaveStatusUpdatePayment()
 	{
-		$statusManager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/status' );
+		$statusManager = \Aimeos\MShop::create( $this->context, 'order/status' );
 
 		$search = $this->object->createSearch();
 		$conditions = array(
@@ -271,7 +277,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSaveStatusUpdateDelivery()
 	{
-		$statusManager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/status' );
+		$statusManager = \Aimeos\MShop::create( $this->context, 'order/status' );
 
 		$search = $this->object->createSearch();
 		$conditions = array(

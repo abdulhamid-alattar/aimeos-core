@@ -29,7 +29,7 @@ class Factory
 	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object
 	 * @throws \Aimeos\MShop\Index\Exception If requested manager implementation couldn't be found
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/index/manager/name
 		 * Class name of the used index manager implementation
@@ -77,7 +77,7 @@ class Factory
 		$iface = \Aimeos\MShop\Index\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Index\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/index/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the index manager

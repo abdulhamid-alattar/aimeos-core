@@ -22,7 +22,7 @@ trait Traits
 	/**
 	 * Returns the address items for the given parent IDs
 	 *
-	 * @param array $parentIds List of parent IDs
+	 * @param string[] $parentIds List of parent IDs
 	 * @param string $domain Domain of the calling manager
 	 * @return array Associative list of parent IDs / address IDs as keys and items implementing
 	 * 	\Aimeos\MShop\Common\Item\Address\Iface as values
@@ -37,6 +37,7 @@ trait Traits
 
 			$search = $manager->createSearch()->setSlice( 0, 0x7fffffff );
 			$search->setConditions( $search->compare( '==', $domain . '.address.parentid', $parentIds ) );
+			$search->setSortations( [$search->sort( '+', $domain . '.address.position')] );
 
 			foreach( $manager->searchItems( $search ) as $id => $addrItem ) {
 				$list[$addrItem->getParentId()][$id] = $addrItem;
@@ -45,6 +46,14 @@ trait Traits
 
 		return $list;
 	}
+
+
+	/**
+	 * Returns the outmost decorator of the decorator stack
+	 *
+	 * @return \Aimeos\MShop\Common\Manager\Iface Outmost decorator object
+	 */
+	abstract protected function getObject();
 
 
 	/**
@@ -57,17 +66,19 @@ trait Traits
 	 */
 	protected function saveAddressItems( \Aimeos\MShop\Common\Item\AddressRef\Iface $item, $domain, $fetch = true )
 	{
+		$pos = 0;
 		$manager = $this->getObject()->getSubManager( 'address' );
 		$manager->deleteItems( array_keys( $item->getAddressItemsDeleted() ) );
 
-		foreach( $item->getAddressItems() as $addrItem )
+		foreach( $item->getAddressItems() as $idx => $addrItem )
 		{
 			if( $addrItem->getParentId() != $item->getId() ) {
-				$addrItem->setId( null ); //create new address item if copied
+				$addrItem = $addrItem->setId( null ); //create new address item if copied
 			}
 
-			$addrItem->setParentId( $item->getId() );
-			$manager->saveItem( $addrItem, $fetch );
+			$addrItem = $addrItem->setParentId( $item->getId() )->setPosition( $pos++ );
+			$addrItem = $manager->saveItem( $addrItem, $fetch );
+			$item = $item->addAddressItem( $addrItem, $idx );
 		}
 
 		return $item;

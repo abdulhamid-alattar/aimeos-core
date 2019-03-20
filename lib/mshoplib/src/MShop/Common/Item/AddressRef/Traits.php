@@ -46,14 +46,12 @@ trait Traits
 	 * Adds a new address item or overwrite an existing one
 	 *
 	 * @param \Aimeos\MShop\Common\Item\Address\Iface $item New or existing address item
+	 * @param integer|null $idx Key in the list of address items or null to add the item at the end
 	 * @return \Aimeos\MShop\Common\Item\Iface Self object for method chaining
 	 */
-	public function addAddressItem( \Aimeos\MShop\Common\Item\Address\Iface $item )
+	public function addAddressItem( \Aimeos\MShop\Common\Item\Address\Iface $item, $idx = null )
 	{
-		$id = $item->getId() ?: 'id-' . $this->addrMax++;
-		$this->addrItems[$id] = $item;
-		$this->addrSorted = null;
-
+		$idx !== null ? $this->addrItems[$idx] = $item : $this->addrItems[] = $item;
 		return $this;
 	}
 
@@ -111,27 +109,24 @@ trait Traits
 
 
 	/**
-	 * Returns the address items of the product
+	 * Returns the address items
+	 *
+	 * @param integer $idx Key in the list of address items
+	 * @return \Aimeos\MShop\Common\Item\Address\Iface|null Address item or null if not found
+	 */
+	public function getAddressItem( $idx )
+	{
+		return ( isset( $this->addrItems[$idx] ) ? $this->addrItems[$idx] : null );
+	}
+
+
+	/**
+	 * Returns the address items
 	 *
 	 * @return \Aimeos\MShop\Common\Item\Address\Iface[] Associative list of address IDs as keys and address items as values
 	 */
 	public function getAddressItems()
 	{
-		if( $this->addrSorted === null )
-		{
-			$fcn = function( $a, $b )
-			{
-				if( $a->getPosition() == $b->getPosition() ) {
-					return 0;
-				}
-
-				return ( $a->getPosition() < $b->getPosition() ? -1 : 1 );
-			};
-
-			uasort( $this->addrItems, $fcn );
-			$this->addrSorted = true;
-		}
-
 		return $this->addrItems;
 	}
 

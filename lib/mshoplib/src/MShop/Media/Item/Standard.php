@@ -99,39 +99,6 @@ class Standard
 
 
 	/**
-	 * Returns the type id of the media.
-	 *
-	 * @return string|null Type of the media
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values['media.typeid'] ) ) {
-			return (string) $this->values['media.typeid'];
-		}
-
-		return null;
-	}
-
-
-	/**
-	 * Sets the new type of the media.
-	 *
-	 * @param string $typeid Type of the media
-	 * @return \Aimeos\MShop\Media\Item\Iface Media item for chaining method calls
-	 */
-	public function setTypeId( $typeid )
-	{
-		if( $typeid !== $this->getTypeId() )
-		{
-			$this->values['media.typeid'] = (string) $typeid;
-			$this->setModified();
-		}
-
-		return $this;
-	}
-
-
-	/**
 	 * Returns the type code of the media item.
 	 *
 	 * @return string|null Type code of the media item
@@ -145,15 +112,20 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
+	 * Sets the new type of the media.
 	 *
-	 * @return string|null Localized name of the type
+	 * @param string $type Type of the media
+	 * @return \Aimeos\MShop\Media\Item\Iface Media item for chaining method calls
 	 */
-	public function getTypeName()
+	public function setType( $type )
 	{
-		if( isset( $this->values['media.typename'] ) ) {
-			return (string) $this->values['media.typename'];
+		if( $type !== $this->getType() )
+		{
+			$this->values['media.type'] = (string) $type;
+			$this->setModified();
 		}
+
+		return $this;
 	}
 
 
@@ -402,35 +374,36 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Media\Item\Iface Media item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
-		unset( $list['media.type'], $list['media.typename'] );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'media.domain': $this->setDomain( $value ); break;
-				case 'media.label': $this->setLabel( $value ); break;
-				case 'media.languageid': $this->setLanguageId( $value ); break;
-				case 'media.mimetype': $this->setMimeType( $value ); break;
-				case 'media.typeid': $this->setTypeId( $value ); break;
-				case 'media.url': $this->setUrl( $value ); break;
-				case 'media.preview': $this->setPreview( $value ); break;
-				case 'media.status': $this->setStatus( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'media.domain': $item = $item->setDomain( $value ); break;
+				case 'media.label': $item = $item->setLabel( $value ); break;
+				case 'media.languageid': $item = $item->setLanguageId( $value ); break;
+				case 'media.mimetype': $item = $item->setMimeType( $value ); break;
+				case 'media.type': $item = $item->setType( $value ); break;
+				case 'media.url': $item = $item->setUrl( $value ); break;
+				case 'media.preview': $item = $item->setPreview( $value ); break;
+				case 'media.status': $item = $item->setStatus( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -449,14 +422,9 @@ class Standard
 		$list['media.languageid'] = $this->getLanguageId();
 		$list['media.mimetype'] = $this->getMimeType();
 		$list['media.type'] = $this->getType();
-		$list['media.typename'] = $this->getTypeName();
 		$list['media.preview'] = $this->getPreview();
 		$list['media.url'] = $this->getUrl();
 		$list['media.status'] = $this->getStatus();
-
-		if( $private === true ) {
-			$list['media.typeid'] = $this->getTypeId();
-		}
 
 		return $list;
 	}

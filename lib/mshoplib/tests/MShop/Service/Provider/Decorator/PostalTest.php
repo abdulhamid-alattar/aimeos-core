@@ -25,13 +25,13 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 	{
 		$this->context = \TestHelperMShop::getContext();
 
-		$servManager = \Aimeos\MShop\Factory::createManager( $this->context, 'service' );
+		$servManager = \Aimeos\MShop::create( $this->context, 'service' );
 		$this->servItem = $servManager->createItem();
 
 		$this->mockProvider = $this->getMockBuilder( \Aimeos\MShop\Service\Provider\Decorator\Postal::class )
 			->disableOriginalConstructor()->getMock();
 
-		$this->basket = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context )
+		$this->basket = \Aimeos\MShop\Order\Manager\Factory::create( $this->context )
 			->getSubManager( 'base' )->createItem();
 
 		$this->object = new \Aimeos\MShop\Service\Provider\Decorator\Postal( $this->mockProvider, $this->context, $this->servItem );
@@ -137,11 +137,11 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoConfig()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( [] );
 
 		$this->mockProvider->expects( $this->once() )
@@ -154,10 +154,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoIncludeBilling()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.billing-include' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -170,10 +170,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoIncludeDelivery()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -186,10 +186,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoIncludeDeliveryFallback()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -202,10 +202,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoExcludeBilling()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.billing-exclude' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -218,10 +218,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoExcludeDelivery()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( array( 'postal.delivery-exclude' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -234,10 +234,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableNoExcludeDeliveryFallback()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.delivery-exclude' => '' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -250,10 +250,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableExcludeBilling()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.billing-exclude' => '025698' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );
@@ -264,10 +264,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableExcludeDelivery()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( array( 'postal.delivery-exclude' => '025698' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );
@@ -278,10 +278,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableExcludeDeliveryFallback()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.delivery-exclude' => '025698' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );
@@ -292,10 +292,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeBilling()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.billing-include' => '025698' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -308,10 +308,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeDelivery()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '025698' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -324,10 +324,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeDeliveryFallback()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '025698' ) );
 
 		$this->mockProvider->expects( $this->once() )
@@ -340,10 +340,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeBillingFailure()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.billing-include' => '452168' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );
@@ -354,10 +354,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeDeliveryFailure()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '452168' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );
@@ -368,10 +368,10 @@ class PostalTest extends \PHPUnit\Framework\TestCase
 
 	public function testIsAvailableIncludeDeliveryFailureFallback()
 	{
-		$address = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/address' )->createItem();
+		$address = \Aimeos\MShop::create( $this->context, 'order/base/address' )->createItem();
 		$address->setPostal( '025698' );
 
-		$this->basket->setAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+		$this->basket->addAddress( $address, \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 		$this->servItem->setConfig( array( 'postal.delivery-include' => '452168' ) );
 
 		$this->mockProvider->expects( $this->never() )->method( 'isAvailable' );

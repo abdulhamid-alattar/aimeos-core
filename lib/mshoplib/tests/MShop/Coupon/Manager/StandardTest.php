@@ -18,7 +18,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	protected function setUp()
 	{
-		$this->object = \Aimeos\MShop\Coupon\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$this->object = \Aimeos\MShop\Coupon\Manager\Factory::create( \TestHelperMShop::getContext() );
 
 		$this->item = $this->object->createItem();
 		$this->item->setProvider( 'Example' );
@@ -35,7 +35,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -89,7 +95,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$search->setConditions( $search->compare( '==', 'coupon.code.code', 'OPQR' ) );
 		$results = $this->object->searchItems( $search );
 
@@ -237,7 +243,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$search->setSlice( 0, 1 );
 		$expr = array(
 			$search->getConditions(),
-			$search->compare( '==', 'coupon.code.editor', 'core:unittest' ),
+			$search->compare( '==', 'coupon.code.editor', 'core:lib/mshoplib' ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$result = $this->object->searchItems( $search, [], $total );

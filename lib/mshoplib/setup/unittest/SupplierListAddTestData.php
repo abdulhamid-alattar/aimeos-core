@@ -21,18 +21,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'MediaAddTestData', 'ProductAddTestData', 'SupplierAddTestData', 'TextAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['SupplierAddTestData', 'MediaAddTestData', 'ProductAddTestData', 'TextAddTestData', 'CustomerAddTestData'];
 	}
 
 
@@ -44,7 +33,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding supplier-list test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'supplier-list.php';
@@ -81,7 +70,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getMediaData( array $keys )
 	{
-		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$urls = [];
 		foreach( $keys as $dataset )
@@ -113,7 +102,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getProductData( array $keys )
 	{
-		$manager = \Aimeos\MShop\Product\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$manager = \Aimeos\MShop\Product\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$codes = [];
 		foreach( $keys as $dataset )
@@ -145,7 +134,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getTextData( array $keys )
 	{
-		$textManager = \Aimeos\MShop\Text\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$textManager = \Aimeos\MShop\Text\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$labels = [];
 		foreach( $keys as $dataset )
@@ -179,7 +168,7 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function addSupplierListData( array $testdata, array $refIds, $type = 'Standard' )
 	{
-		$supplierManager = \Aimeos\MShop\Supplier\Manager\Factory::createManager( $this->additional, $type );
+		$supplierManager = \Aimeos\MShop\Supplier\Manager\Factory::create( $this->additional, $type );
 		$supplierListManager = $supplierManager->getSubManager( 'lists', $type );
 		$supplierListTypeManager = $supplierListManager->getSubmanager( 'type', $type );
 
@@ -201,7 +190,6 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$parentIds[ 'supplier/'.$item->getCode() ] = $item->getId();
 		}
 
-		$listItemTypeIds = [];
 		$listItemType = $supplierListTypeManager->createItem();
 
 		$supplierManager->begin();
@@ -215,7 +203,6 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$listItemType->setStatus( $dataset['status'] );
 
 			$supplierListTypeManager->saveItem( $listItemType );
-			$listItemTypeIds[ $key ] = $listItemType->getId();
 		}
 
 		$listItem = $supplierListManager->createItem();
@@ -229,14 +216,10 @@ class SupplierListAddTestData extends \Aimeos\MW\Setup\Task\Base
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No "%2$s" ref ID found for "%1$s"', $dataset['refid'], $dataset['domain'] ) );
 			}
 
-			if( !isset( $listItemTypeIds[ $dataset['typeid'] ] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No supplier list type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$listItem->setId( null );
 			$listItem->setParentId( $parentIds[ $dataset['parentid'] ] );
-			$listItem->setTypeId( $listItemTypeIds[ $dataset['typeid'] ] );
 			$listItem->setRefId( $refIds[ $dataset['domain'] ] [ $dataset['refid'] ] );
+			$listItem->setType( $dataset['type'] );
 			$listItem->setDomain( $dataset['domain'] );
 			$listItem->setDateStart( $dataset['start'] );
 			$listItem->setDateEnd( $dataset['end'] );

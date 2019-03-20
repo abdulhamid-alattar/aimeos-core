@@ -135,7 +135,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key to aggregate items for
-	 * @return array List of the search keys as key and the number of counted items as value
+	 * @return integer[] List of the search keys as key and the number of counted items as value
 	 * @todo 2018.01 Add optional parameters to interface
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key, $value = null, $type = null )
@@ -197,7 +197,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Order\Manager\Base\Service\Attribute\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -206,19 +207,17 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/order/manager/base/service/attribute/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/order/manager/base/service/attribute/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface New order service attribute item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['order.base.service.attribute.siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -228,10 +227,10 @@ class Standard
 	/**
 	 * Returns the attribute object for the given ID.
 	 *
-	 * @param integer $id Attribute ID
+	 * @param string $id Order service attribute ID
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
-	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface Returns order base service attribute item of the given id
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface Order base service attribute item of the given ID
 	 * @throws \Aimeos\MShop\Exception If item couldn't be found
 	 */
 	public function getItem( $id, array $ref = [], $default = false )
@@ -243,7 +242,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Order\Manager\Base\Service\Attribute\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -278,7 +278,8 @@ class Standard
 		 * @see mshop/order/manager/base/service/attribute/standard/count/ansi
 		 */
 		$path = 'mshop/order/manager/base/service/attribute/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -286,12 +287,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/order/manager/base/service/attribute/submanagers';
-
 		return $this->getResourceTypeBase( 'order/base/service/attribute', $path, [], $withsub );
 	}
 
@@ -300,7 +300,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array Returns a list of attributes implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -455,9 +455,9 @@ class Standard
 	/**
 	 * Adds or updates an order service attribute item to the storage.
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item Order service attribute object
+	 * @param \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface $item Order service attribute object
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -636,7 +636,7 @@ class Standard
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param integer|null &$total Number of items that are available in total
-	 * @return array List of items implementing \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Iface[] List of order service attribute items
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
@@ -802,7 +802,7 @@ class Standard
 	 * Creates a new order service attribute item object initialized with given parameters.
 	 *
 	 * @param array $values Associative list of order service attribute key/value pairs
-	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Standard New item
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Attribute\Standard New order service attribute item
 	 */
 	protected function createItemBase( array $values = [] )
 	{

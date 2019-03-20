@@ -30,7 +30,7 @@ class Factory
 	 * @return \Aimeos\MShop\Locale\Manager\Iface Manager object
 	 * @throws \Aimeos\MShop\Locale\Exception If requested manager implementation couldn't be found
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/locale/manager/name
 		 * Class name of the used locale manager implementation
@@ -78,7 +78,7 @@ class Factory
 		$iface = \Aimeos\MShop\Locale\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Locale\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/locale/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the locale manager

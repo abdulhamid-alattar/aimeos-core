@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$manager = \Aimeos\MShop\Price\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Price\Manager\Factory::create( \TestHelperMShop::getContext() );
 
 		$listManager = $manager->getSubManager( 'lists' );
 		$this->object = $listManager->getSubManager( 'type' );
@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
@@ -55,7 +55,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$search->setConditions( $search->compare( '==', 'price.lists.type.editor', $this->editor ) );
 		$results = $this->object->searchItems( $search );
 
@@ -130,14 +130,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSearchItems()
 	{
-		$total = 0;
 		$search = $this->object->createSearch();
 
 		$expr = [];
 		$expr[] = $search->compare( '!=', 'price.lists.type.id', null );
 		$expr[] = $search->compare( '!=', 'price.lists.type.siteid', null );
 		$expr[] = $search->compare( '==', 'price.lists.type.code', 'default' );
-		$expr[] = $search->compare( '==', 'price.lists.type.domain', 'customer' );
+		$expr[] = $search->compare( '==', 'price.lists.type.domain', 'product' );
 		$expr[] = $search->compare( '==', 'price.lists.type.label', 'Standard' );
 		$expr[] = $search->compare( '>=', 'price.lists.type.position', 0 );
 		$expr[] = $search->compare( '==', 'price.lists.type.status', 1 );
@@ -147,17 +146,19 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$results = $this->object->searchItems( $search, [], $total );
 		$this->assertEquals( 1, count( $results ) );
+	}
 
 
-		$search = $this->object->createSearch();
-		$conditions = array(
-			$search->compare( '~=', 'price.lists.type.code', 'd' ),
-			$search->compare( '==', 'price.lists.type.editor', $this->editor )
-		);
-		$search->setConditions( $search->combine( '&&', $conditions ) );
+	public function testSearchItemsTotal()
+	{
+		$total = 0;
+
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
+		$search->setConditions( $search->compare( '==', 'price.lists.type.editor', $this->editor ) );
 		$search->setSortations( [$search->sort( '-', 'price.lists.type.position' )] );
-		$search->setSlice( 0, 1 );
+
 		$results = $this->object->searchItems( $search, [], $total );
+
 		$this->assertEquals( 1, count( $results ) );
 		$this->assertEquals( 2, $total );
 
@@ -165,5 +166,4 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			$this->assertEquals( $itemId, $item->getId() );
 		}
 	}
-
 }

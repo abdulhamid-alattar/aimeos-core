@@ -59,7 +59,7 @@ abstract class Base
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key to aggregate items for
-	 * @return array List of the search keys as key and the number of counted items as value
+	 * @return integer[] List of the search keys as key and the number of counted items as value
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key )
 	{
@@ -71,21 +71,12 @@ abstract class Base
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Common\Item\Lists\Iface New list item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values[$this->prefix . 'siteid'] = $this->getContext()->getLocale()->getSiteId();
-
-		if( $type !== null )
-		{
-			$values[$this->prefix . 'typeid'] = $this->getTypeId( $type, $domain );
-			$values[$this->prefix . 'type'] = $type;
-		}
-
 		return $this->createItemBase( $values );
 	}
 
@@ -125,23 +116,24 @@ abstract class Base
 			$stmt = $this->getCachedStatement( $conn, $this->getConfigPath() . $type );
 
 			$stmt->bind( 1, $item->getParentId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 2, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 3, $item->getDomain(), \Aimeos\MW\DB\Statement\Base::PARAM_STR );
-			$stmt->bind( 4, $item->getRefId(), \Aimeos\MW\DB\Statement\Base::PARAM_STR );
-			$stmt->bind( 5, $item->getDateStart(), \Aimeos\MW\DB\Statement\Base::PARAM_STR );
-			$stmt->bind( 6, $item->getDateEnd(), \Aimeos\MW\DB\Statement\Base::PARAM_STR );
-			$stmt->bind( 7, json_encode( $item->getConfig() ), \Aimeos\MW\DB\Statement\Base::PARAM_STR );
-			$stmt->bind( 8, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 9, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 10, $time ); //mtime
-			$stmt->bind( 11, $this->getContext()->getEditor() );
-			$stmt->bind( 12, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 2, $item->getKey() );
+			$stmt->bind( 3, $item->getType() );
+			$stmt->bind( 4, $item->getDomain() );
+			$stmt->bind( 5, $item->getRefId() );
+			$stmt->bind( 6, $item->getDateStart() );
+			$stmt->bind( 7, $item->getDateEnd() );
+			$stmt->bind( 8, json_encode( $item->getConfig() ) );
+			$stmt->bind( 9, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 10, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 11, $time ); //mtime
+			$stmt->bind( 12, $this->getContext()->getEditor() );
+			$stmt->bind( 13, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 
 			if( $id !== null ) {
-				$stmt->bind( 13, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+				$stmt->bind( 14, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 			} else {
-				$stmt->bind( 13, $time ); //ctime
+				$stmt->bind( 14, $time ); //ctime
 			}
 
 			$stmt->execute()->finish();
@@ -171,18 +163,19 @@ abstract class Base
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Common\Manager\Lists\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
-		$this->deleteItemsBase( $ids, $this->getConfigPath() . 'delete' );
+		return $this->deleteItemsBase( $ids, $this->getConfigPath() . 'delete' );
 	}
 
 
 	/**
 	 * Creates common list item object for the given common list item id.
 	 *
-	 * @param integer $id Id of common list item object
+	 * @param string $id Id of common list item object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Common\Item\Lists\Iface Returns common list item object of the given id
@@ -213,117 +206,6 @@ abstract class Base
 
 
 	/**
-	 * Moves the common list item object with Id in the list of Id's before the
-	 * common list item object with reference Id of the given node.
-	 *
-	 * @param integer $id Id of the item which should be moved
-	 * @param integer|null $ref Id where the given Id should be inserted before (null for appending)
-	 */
-	public function moveItem( $id, $ref = null )
-	{
-		$context = $this->getContext();
-		$siteid = $context->getLocale()->getSiteId();
-		$cfgPath = $this->getConfigPath();
-
-		$listItem = $this->getObject()->getItem( $id );
-
-		$newpos = $pos = 0;
-		$oldpos = $listItem->getPosition();
-		$parentid = $listItem->getParentId();
-		$typeid = $listItem->getTypeId();
-		$domain = $listItem->getDomain();
-
-		if( $ref !== null ) {
-			$pos = $this->getObject()->getItem( $ref )->getPosition();
-		}
-
-		$dbm = $context->getDatabaseManager();
-		$dbname = $this->getResourceName();
-		$conn = $dbm->acquire( $dbname );
-
-		try
-		{
-			if( $ref !== null )
-			{
-				$newpos = $pos;
-
-				$sql = $this->getSqlConfig( $cfgPath . 'move' );
-
-				$stmt = $conn->create( $sql );
-				$stmt->bind( 1, +1, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 2, date( 'Y-m-d H:i:s' ) ); //mtime
-				$stmt->bind( 3, $this->getContext()->getEditor() );
-				$stmt->bind( 4, $siteid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 5, $parentid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 6, $typeid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 7, $domain );
-				$stmt->bind( 8, $pos, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-
-				$stmt->execute()->finish();
-			}
-			else
-			{
-				$sql = $this->getSqlConfig( $cfgPath . 'getposmax' );
-
-				$stmt = $conn->create( $sql );
-
-				$stmt->bind( 1, $siteid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 2, $parentid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 3, $typeid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 4, $domain );
-
-				$result = $stmt->execute();
-				$row = $result->fetch();
-				$result->finish();
-
-				if( $row !== false ) {
-					$newpos = $row['pos'] + 1;
-				}
-			}
-
-			$sql = $this->getSqlConfig( $cfgPath . 'updatepos' );
-
-			$stmt = $conn->create( $sql );
-			$stmt->bind( 1, $newpos, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 2, date( 'Y-m-d H:i:s' ) ); // mtime
-			$stmt->bind( 3, $this->getContext()->getEditor() );
-			$stmt->bind( 4, $siteid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 5, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-
-			$stmt->execute()->finish();
-
-			if( $oldpos > $newpos ) {
-				$oldpos++;
-			}
-
-			if( $oldpos > 0 )
-			{
-				$sql = $this->getSqlConfig( $cfgPath . 'move' );
-
-				$stmt = $conn->create( $sql );
-				$stmt->bind( 1, -1, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 2, date( 'Y-m-d H:i:s' ) ); // mtime
-				$stmt->bind( 3, $this->getContext()->getEditor() );
-				$stmt->bind( 4, $siteid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 5, $parentid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 6, $typeid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-				$stmt->bind( 7, $domain );
-				$stmt->bind( 8, $oldpos, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-
-				$stmt->execute()->finish();
-			}
-
-			$dbm->release( $conn, $dbname );
-		}
-		catch( \Exception $e )
-		{
-			$dbm->release( $conn, $dbname );
-			throw $e;
-		}
-	}
-
-
-	/**
 	 * Search for all list items based on the given critera.
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
@@ -333,7 +215,7 @@ abstract class Base
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$items = $map = $typeIds = [];
+		$items = [];
 
 		$dbm = $this->getContext()->getDatabaseManager();
 		$dbname = $this->getResourceName();
@@ -341,12 +223,6 @@ abstract class Base
 
 		try
 		{
-			$domain = explode( '.', $this->prefix );
-
-			if( ( $topdomain = array_shift( $domain ) ) === null ) {
-				throw new \Aimeos\MShop\Exception( sprintf( 'Configuration not available' ) );
-			}
-
 			$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
 			$cfgPathSearch = $this->getConfigPath() . 'search';
 			$cfgPathCount = $this->getConfigPath() . 'count';
@@ -362,84 +238,8 @@ abstract class Base
 					$row[$this->prefix . 'config'] = [];
 				}
 
-				$map[$row[$this->prefix . 'id']] = $row;
-				$typeIds[$row[$this->prefix . 'typeid']] = null;
-			}
-
-			$dbm->release( $conn, $dbname );
-		}
-		catch( \Exception $e )
-		{
-			$dbm->release( $conn, $dbname );
-			throw $e;
-		}
-
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', $name . '.type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[$row[$this->prefix . 'typeid']] ) )
-				{
-					$row[$this->prefix . 'type'] = $typeItems[$row[$this->prefix . 'typeid']]->getCode();
-					$row[$this->prefix . 'typename'] = $typeItems[$row[$this->prefix . 'typeid']]->getName();
-				}
-
 				$items[$row[$this->prefix . 'id']] = $this->createItemBase( $row );
 			}
-		}
-
-		return $items;
-	}
-
-
-	/**
-	 * Search for all referenced items from the list based on the given critera.
-	 *
-	 * Only criteria from the list and list type can be used for searching and
-	 * sorting, but no criteria from the referenced items.
-	 *
-	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
-	 * @param string[] $ref List of domains to fetch list items and referenced items for
-	 * @param integer|null &$total Number of items that are available in total
-	 * @return array Associative list of domains as keys and lists with pairs of IDs and items implementing \Aimeos\MShop\Common\Item\Iface
-	 * @throws \Aimeos\MShop\Exception If creating items failed
-	 * @see \Aimeos\MW\Criteria\SQL
-	 */
-	public function searchRefItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
-	{
-		$items = $map = [];
-		$context = $this->getContext();
-
-		$dbm = $context->getDatabaseManager();
-		$dbname = $this->getResourceName();
-		$conn = $dbm->acquire( $dbname );
-
-		try
-		{
-			$domain = explode( '.', $this->prefix );
-
-			if( ( $topdomain = array_shift( $domain ) ) === null ) {
-				throw new \Aimeos\MShop\Exception( sprintf( 'Configuration not available' ) );
-			}
-
-			$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
-			$cfgPathSearch = $this->getConfigPath() . 'search';
-			$cfgPathCount = $this->getConfigPath() . 'count';
-
-			$name = trim( $this->prefix, '.' );
-			$required = array( $name );
-
-			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
-
-			while( ( $row = $results->fetch() ) !== false ) {
-				$map[$row[$this->prefix . 'domain']][] = $row[$this->prefix . 'refid'];
-			}
 
 			$dbm->release( $conn, $dbname );
 		}
@@ -449,30 +249,15 @@ abstract class Base
 			throw $e;
 		}
 
-
-		foreach( $map as $domain => $list )
-		{
-			$manager = \Aimeos\MShop\Factory::createManager( $context, $domain );
-
-			$search = $manager->createSearch( true )->setSlice( 0, count( $list ) );
-			$expr = array(
-				$search->compare( '==', str_replace( '/', '.', $domain ) . '.id', $list ),
-				$search->getConditions(),
-			);
-			$search->setConditions( $search->combine( '&&', $expr ) );
-
-			$items[$domain] = $manager->searchItems( $search, $ref );
-		}
-
 		return $items;
 	}
 
 
 	/**
-	 * Creates a search object including the base criteria (optionally).
+	 * Creates a search object including the base criteria (optional)
 	 *
 	 * @param boolean $default Include default criteria
-	 * @return \Aimeos\MW\Criteria\Iface Critera object
+	 * @return \Aimeos\MW\Criteria\Iface Search critera object
 	 */
 	public function createSearch( $default = false )
 	{

@@ -22,7 +22,7 @@ class AttributeAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'AttributeAddTestData' );
+		return ['AttributeAddTestData'];
 	}
 
 
@@ -45,7 +45,7 @@ class AttributeAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding attribute property test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'attribute-property.php';
@@ -67,11 +67,10 @@ class AttributeAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addAttributePropertyData( array $testdata )
 	{
-		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::create( $this->additional, 'Standard' );
 		$attributePropertyManager = $attributeManager->getSubManager( 'property', 'Standard' );
 		$attributePropertyTypeManager = $attributePropertyManager->getSubManager( 'type', 'Standard' );
 
-		$typeIds = [];
 		$type = $attributePropertyTypeManager->createItem();
 		$prodIds = $this->getAttributeIds( $attributeManager );
 
@@ -87,21 +86,16 @@ class AttributeAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 			$type->setStatus( $dataset['status'] );
 
 			$attributePropertyTypeManager->saveItem( $type );
-			$typeIds[ $key ] = $type->getId();
 		}
 
 		$prodProperty = $attributePropertyManager->createItem();
 		foreach( $testdata['attribute/property'] as $key => $dataset )
 		{
-			if( !isset( $typeIds[ $dataset['typeid'] ] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No attribute property type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$prodProperty->setId( null );
 			$prodProperty->setParentId( $prodIds[ $dataset['parentid'] ] );
-			$prodProperty->setTypeId( $typeIds[ $dataset['typeid'] ] );
 			$prodProperty->setLanguageId( $dataset['langid'] );
 			$prodProperty->setValue( $dataset['value'] );
+			$prodProperty->setType( $dataset['type'] );
 
 			$attributePropertyManager->saveItem( $prodProperty, false );
 		}
@@ -126,6 +120,5 @@ class AttributeAddPropertyTestData extends \Aimeos\MW\Setup\Task\Base
 		}
 
 		return $entry;
-
 	}
 }

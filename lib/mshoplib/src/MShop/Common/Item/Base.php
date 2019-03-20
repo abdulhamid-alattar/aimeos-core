@@ -243,25 +243,23 @@ abstract class Base
 
 
 	/**
-	 * Sets the item values from the given array.
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array $list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Common\Item\Iface Item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		if( array_key_exists( $this->prefix . 'id', $list ) )
+		$item = $this;
+
+		if( $private && array_key_exists( $this->prefix . 'id', $list ) )
 		{
-			$this->setId( $list[$this->prefix . 'id'] );
+			$item = $item->setId( $list[$this->prefix . 'id'] );
 			unset( $list[$this->prefix . 'id'] );
 		}
 
-		unset( $list[$this->prefix . 'siteid'] );
-		unset( $list[$this->prefix . 'ctime'] );
-		unset( $list[$this->prefix . 'mtime'] );
-		unset( $list[$this->prefix . 'editor'] );
-
-		return $list;
+		return $item;
 	}
 
 

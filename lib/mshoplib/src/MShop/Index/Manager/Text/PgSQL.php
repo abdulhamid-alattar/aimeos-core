@@ -57,10 +57,11 @@ class PgSQL
 
 			if( isset( $params[1] ) )
 			{
-				$regex = '/(\s|\&|\%|\?|\#|\=|\{|\}|\||\\\\|\~|\[|\]|\`|\^|\/|\-|\+|\>|\<|\(|\)|\*|\:|\"|\!|\§|\$|\'|\;|\.|\,|\@)+/';
-				$search = trim( preg_replace( $regex, ' ', $params[1] ) );
+				$regex = '/(\:|\*|\&|\||\\|\>|\<|\(|\)|\!|\@| )+/';
+				$search = trim( preg_replace( $regex, ' ', $params[1] ), "' \t\n\r\0\x0B" );
 
-				$params[1] = '\'' . implode( ':* & ', explode( ' ', strtolower( $search ) ) ) . ':*\'';
+				$str = implode( ':* & ', explode( ' ', strtolower( $search ) ) );
+				$params[1] = '\'' . str_replace( '\'', '\'\'', $str ) . ':*\'';
 			}
 
 			return $params;
@@ -75,7 +76,7 @@ class PgSQL
 	 * Returns a list of objects describing the available criterias for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attriubte items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{

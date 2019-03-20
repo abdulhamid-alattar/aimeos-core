@@ -44,7 +44,7 @@ abstract class Base
 	 *
 	 * @param string $name Name of the method
 	 * @param array $param List of method parameter
-	 * @throws \Aimeos\MShop\Common\Manager\Exception If method call failed
+	 * @throws \Aimeos\MShop\Service\Manager\Exception If method call failed
 	 */
 	public function __call( $name, array $param )
 	{
@@ -62,7 +62,7 @@ abstract class Base
 	 */
 	public function calcPrice( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $this->context, 'price' );
 		$prices = $this->serviceItem->getRefItems( 'price', 'default', 'default' );
 
 		if( count( $prices ) > 0 ) {
@@ -148,10 +148,12 @@ abstract class Base
 	 * - payment.url-update
 	 *
 	 * @param array $config Associative list of config keys and their value
+	 * @return \Aimeos\MShop\Service\Provider\Iface Provider object for chaining method calls
 	 */
 	public function injectGlobalConfigBE( array $config )
 	{
 		$this->beGlobalConfig = $config;
+		return $this;
 	}
 
 
@@ -220,7 +222,8 @@ abstract class Base
 	/**
 	 * Updates the order status sent by payment gateway notifications
 	 *
-	 * @param \Psr\Http\Message\ServerRequestInterface Request object
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object
+	 * @param \Psr\Http\Message\ResponseInterface $response Response object
 	 * @return \Psr\Http\Message\ResponseInterface Response object
 	 */
 	public function updatePush( \Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response )
@@ -244,139 +247,17 @@ abstract class Base
 
 
 	/**
-	 * Calculates the last date behind the given timestamp depending on the other paramters.
+	 * Checks required fields and the types of the given data map
 	 *
-	 * This method is used to calculate the date for comparing the order date to
-	 * if e.g. credit card payments should be captured or direct debit should be
-	 * checked after the given amount of days from external payment providers.
-	 * This method can calculate with business/working days only if requested
-	 * and use the given list of public holidays to take them into account.
-	 *
-	 * @param integer $timestamp Timestamp to use as starting point for the backward calculation
-	 * @param integer $skipdays Number of days to calculate backwards
-	 * @param boolean $businessOnly True if only business days should be used for calculation, false if not
-	 * @param string $publicHolidays Comma separated list of public holidays in YYYY-MM-DD format
-	 * @return string Date in YYY-MM-DD format to be compared to the order date
-	 * @throws \Aimeos\MShop\Service\Exception If the given holiday string is in the wrong format and can't be processed
-	 */
-	protected function calcDateLimit( $timestamp, $skipdays = 0, $businessOnly = false, $publicHolidays = '' )
-	{
-		$holidays = $this->getPublicHolidays( $publicHolidays );
-
-		if( !empty( $holidays ) )
-		{
-			for( $i = 0; $i <= $skipdays; $i++ )
-			{
-				$date = date( 'Y-m-d', $timestamp - $i * 86400 );
-
-				if( isset( $holidays[$date] ) ) {
-					$skipdays++;
-				}
-			}
-		}
-
-		if( $businessOnly === true )
-		{
-			// adds days for weekends
-			for( $i = 0; $i <= $skipdays; $i++ )
-			{
-				$ts = $timestamp - $i * 86400;
-
-				if( date( 'N', $ts ) > 5 && !isset( $holidays[date( 'Y-m-d', $ts )] ) ) {
-					$skipdays++;
-				}
-			}
-		}
-
-		return date( 'Y-m-d', $timestamp - $skipdays * 86400 );
-	}
-
-
-	/**
-	 * Checks required fields and the types of the config array.
-	 *
-	 * @param array $config Config parameters
-	 * @param array $attributes Attributes for the config array
+	 * @param array $criteria Multi-dimensional associative list of criteria configuration
+	 * @param array $map Values to check agains the criteria
 	 * @return array An array with the attribute keys as key and an error message as values for all attributes that are
 	 * 	known by the provider but aren't valid resp. null for attributes whose values are OK
 	 */
-	protected function checkConfig( array $config, array $attributes )
+	protected function checkConfig( array $criteria, array $map )
 	{
-		$errors = [];
-
-		foreach( $config as $key => $def )
-		{
-			if( $def['required'] === true && ( !isset( $attributes[$key] ) || $attributes[$key] === '' ) )
-			{
-				$errors[$key] = sprintf( 'Configuration for "%1$s" is missing', $key );
-				continue;
-			}
-
-			if( isset( $attributes[$key] ) )
-			{
-				switch( $def['type'] )
-				{
-					case 'boolean':
-						if( !is_string( $attributes[$key] ) || $attributes[$key] !== '0' && $attributes[$key] !== '1' ) {
-							$errors[$key] = sprintf( 'Not a true/false value' ); continue 2;
-						}
-						break;
-					case 'string':
-					case 'text':
-						if( is_string( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not a string' ); continue 2;
-						}
-						break;
-					case 'integer':
-						if( ctype_digit( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not an integer number' ); continue 2;
-						}
-						break;
-					case 'number':
-						if( is_numeric( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not a number' ); continue 2;
-						}
-						break;
-					case 'date':
-						$pattern = '/^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a date' ); continue 2;
-						}
-						break;
-					case 'datetime':
-						$pattern = '/^[0-9]{4}-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9](:[0-5][0-9])?$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a date and time' ); continue 2;
-						}
-						break;
-					case 'time':
-						$pattern = '/^([0-2])?[0-9]:[0-5][0-9](:[0-5][0-9])?$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a time' ); continue 2;
-						}
-						break;
-					case 'list':
-					case 'select':
-						if( !is_array( $def['default'] ) || !isset( $def['default'][$attributes[$key]] )
-							&& !in_array( $attributes[$key], $def['default'] )
-						) {
-							$errors[$key] = sprintf( 'Not a listed value' ); continue 2;
-						}
-						break;
-					case 'map':
-						if( !is_array( $attributes[$key] ) ) {
-							$errors[$key] = sprintf( 'Not a key/value map' ); continue 2;
-						}
-						break;
-					default:
-						throw new \Aimeos\MShop\Service\Exception( sprintf( 'Invalid type "%1$s"', $def['type'] ) );
-				}
-			}
-
-			$errors[$key] = null;
-		}
-
-		return $errors;
+		$helper = new \Aimeos\MShop\Common\Helper\Config\Standard( $this->getConfigItems( $criteria ) );
+		return $helper->check( $map );
 	}
 
 
@@ -410,12 +291,10 @@ abstract class Base
 	 */
 	protected function getConfigValue( $keys, $default = null )
 	{
-		$srvconfig = $this->getServiceItem()->getConfig();
-
 		foreach( (array) $keys as $key )
 		{
-			if( isset( $srvconfig[$key] ) ) {
-				return $srvconfig[$key];
+			if( ( $value = $this->getServiceItem()->getConfigValue( $key ) ) !== null ) {
+				return $value;
 			}
 
 			if( isset( $this->beGlobalConfig[$key] ) ) {
@@ -476,7 +355,7 @@ abstract class Base
 	/**
 	 * Returns the first object of the decorator stack
 	 *
-	 * @return \Aimeos\MShop\Plugin\Provider\Iface First object of the decorator stack
+	 * @return \Aimeos\MShop\Service\Provider\Iface First object of the decorator stack
 	 */
 	protected function getObject()
 	{
@@ -496,11 +375,10 @@ abstract class Base
 	 */
 	protected function getOrder( $id )
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->context, 'order' );
+		$manager = \Aimeos\MShop::create( $this->context, 'order' );
 
-		$search = $manager->createSearch( true );
+		$search = $manager->createSearch();
 		$expr = [
-			$search->getConditions(),
 			$search->compare( '==', 'order.id', $id ),
 			$search->compare( '==', 'order.base.service.code', $this->serviceItem->getCode() ),
 		];
@@ -525,7 +403,7 @@ abstract class Base
 	 */
 	protected function getOrderBase( $baseId, $parts = \Aimeos\MShop\Order\Item\Base\Base::PARTS_SERVICE )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->context, 'order/base' )->load( $baseId, $parts );
+		return \Aimeos\MShop::create( $this->context, 'order/base' )->load( $baseId, $parts );
 	}
 
 
@@ -537,7 +415,7 @@ abstract class Base
 	 */
 	protected function saveOrder( \Aimeos\MShop\Order\Item\Iface $item )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->context, 'order' )->saveItem( $item );
+		return \Aimeos\MShop::create( $this->context, 'order' )->saveItem( $item );
 	}
 
 
@@ -550,18 +428,15 @@ abstract class Base
 	 */
 	protected function getCustomerData( $customerId, $type )
 	{
-		if( $customerId == null ) {
-			return;
-		}
-
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'customer' );
-		$item = $manager->getItem( $customerId, ['service'] );
-		$serviceId = $this->getServiceItem()->getId();
-
-		if( ( $listItem = $item->getListItem( 'service', 'default', $serviceId ) ) !== null )
+		if( $customerId != null )
 		{
-			$config = $listItem->getConfig();
-			return ( isset( $config[$type] ) ? $config[$type] : null );
+			$manager = \Aimeos\MShop::create( $this->getContext(), 'customer' );
+			$item = $manager->getItem( $customerId, ['service'] );
+			$serviceId = $this->getServiceItem()->getId();
+
+			if( ( $listItem = $item->getListItem( 'service', 'default', $serviceId ) ) !== null ) {
+				return $listItem->getConfigValue( $type );
+			}
 		}
 	}
 
@@ -571,10 +446,11 @@ abstract class Base
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Order base object with associated items
 	 * @param integer $parts Bitmap of the basket parts that should be stored
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Stored order base item
 	 */
 	protected function saveOrderBase( \Aimeos\MShop\Order\Item\Base\Iface $base, $parts = \Aimeos\MShop\Order\Item\Base\Base::PARTS_SERVICE )
 	{
-		\Aimeos\MShop\Factory::createManager( $this->context, 'order/base' )->store( $base, $parts );
+		return \Aimeos\MShop::create( $this->context, 'order/base' )->store( $base, $parts );
 	}
 
 
@@ -584,10 +460,11 @@ abstract class Base
 	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem Order service item that will be added to the basket
 	 * @param array $attributes Attribute key/value pairs entered by the customer during the checkout process
 	 * @param string $type Type of the configuration values (delivery or payment)
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Modified order service item
 	 */
 	protected function setAttributes( \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem, array $attributes, $type )
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/service/attribute' );
+		$manager = \Aimeos\MShop::create( $this->context, 'order/base/service/attribute' );
 
 		foreach( $attributes as $key => $value )
 		{
@@ -598,6 +475,8 @@ abstract class Base
 
 			$orderServiceItem->setAttributeItem( $item );
 		}
+
+		return $orderServiceItem;
 	}
 
 
@@ -607,54 +486,26 @@ abstract class Base
 	 * @param string $customerId Unique customer ID the service token belongs to
 	 * @param string $type Type of the value that should be added
 	 * @param string|array $data Service data to store
+	 * @param \Aimeos\MShop\Service\Provider\Iface Provider object for chaining method calls
 	 */
 	protected function setCustomerData( $customerId, $type, $data )
 	{
-		if( $customerId == null ) {
-			return;
-		}
-
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'customer' );
-		$item = $manager->getItem( $customerId, ['service'] );
-		$serviceId = $this->getServiceItem()->getId();
-
-		if( ( $listItem = $item->getListItem( 'service', 'default', $serviceId, false ) ) === null )
+		if( $customerId != null )
 		{
-			$listManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'customer/lists' );
-			$listTypeManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'customer/lists/type' );
+			$manager = \Aimeos\MShop::create( $this->getContext(), 'customer' );
+			$item = $manager->getItem( $customerId, ['service'] );
+			$serviceId = $this->getServiceItem()->getId();
 
-			$listItem = $listManager->createItem();
-			$listItem->setTypeId( $listTypeManager->findItem( 'default', [], 'service' )->getId() );
-			$listItem->setRefId( $serviceId );
-		}
-
-		$listItem->setConfig( array_merge( $listItem->getConfig(), [$type => $data] ) );
-		$manager->saveItem( $item->addListItem( 'service', $listItem ) );
-	}
-
-
-	/**
-	 * Returns the public holidays in ISO format
-	 *
-	 * @param string $list Comma separated list of public holidays in YYYY-MM-DD format
-	 * @return array List of dates in YYYY-MM-DD format
-	 * @throws \Aimeos\MShop\Service\Exception If the given holiday string is in the wrong format and can't be processed
-	 */
-	private function getPublicHolidays( $list )
-	{
-		$holidays = [];
-
-		if( is_string( $list ) && $list !== '' )
-		{
-			$holidays = explode( ',', str_replace( ' ', '', $list ) );
-
-			if( sort( $holidays ) === false ) {
-				throw new \Aimeos\MShop\Service\Exception( sprintf( 'Unable to sort public holidays: "%1$s"', $list ) );
+			if( ( $listItem = $item->getListItem( 'service', 'default', $serviceId, false ) ) === null )
+			{
+				$listManager = \Aimeos\MShop::create( $this->getContext(), 'customer/lists' );
+				$listItem = $listManager->createItem()->setType( 'default' )->setRefId( $serviceId );
 			}
 
-			$holidays = array_flip( $holidays );
+			$listItem->setConfig( array_merge( $listItem->getConfig(), [$type => $data] ) );
+			$manager->saveItem( $item->addListItem( 'service', $listItem ) );
 		}
 
-		return $holidays;
+		return $this;
 	}
 }

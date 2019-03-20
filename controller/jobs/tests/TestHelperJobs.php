@@ -19,7 +19,7 @@ class TestHelperJobs
 	public static function bootstrap()
 	{
 		self::getAimeos();
-		\Aimeos\MShop\Factory::setCache( false );
+		\Aimeos\MShop::cache( false );
 	}
 
 
@@ -114,7 +114,7 @@ class TestHelperJobs
 		$ctx->setI18n( array( 'de' => $i18n ) );
 
 
-		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::createManager( $ctx );
+		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::create( $ctx );
 		$locale = $localeManager->bootstrap( $site, 'de', '', false );
 		$ctx->setLocale( $locale );
 
@@ -123,7 +123,7 @@ class TestHelperJobs
 		$ctx->setView( $view );
 
 
-		$ctx->setEditor( 'core:controller/jobs' );
+		$ctx->setEditor( 'core:cntl/jobs' );
 
 		return $ctx;
 	}

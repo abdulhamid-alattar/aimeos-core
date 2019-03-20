@@ -2,7 +2,7 @@
 
 /**
  * @license LGPLv3, http://opensource.org/licenses/LGPL-3.0
- * @copyright Aimeos (aimeos.org), 2016-2018-2018
+ * @copyright Aimeos (aimeos.org), 2016-2018
  * @package MShop
  * @subpackage Service
  */
@@ -126,7 +126,7 @@ class Category
 	 */
 	protected function getCatalogIds( array $catalogCodes )
 	{
-		$catalogManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'catalog' );
+		$catalogManager = \Aimeos\MShop::create( $this->getContext(), 'catalog' );
 
 		$search = $catalogManager->createSearch( true );
 		$expr = array(
@@ -186,13 +186,13 @@ class Category
 	 */
 	protected function getRefCatalogIds( array $productIds )
 	{
-		$catalogListsManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'catalog/lists' );
+		$catalogListsManager = \Aimeos\MShop::create( $this->getContext(), 'catalog/lists' );
 
 		$search = $catalogListsManager->createSearch();
 		$expr = array(
 			$search->compare( '==', 'catalog.lists.refid', $productIds ),
 			$search->compare( '==', 'catalog.lists.domain', 'product' ),
-			$search->compare( '==', 'catalog.lists.type.code', 'default' ),
+			$search->compare( '==', 'catalog.lists.type', 'default' ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -209,7 +209,7 @@ class Category
 	protected function getTreeCatalogIds( array $catalogIds )
 	{
 		$ids = [];
-		$catalogManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'catalog' );
+		$catalogManager = \Aimeos\MShop::create( $this->getContext(), 'catalog' );
 
 		foreach( $catalogIds as $catId )
 		{

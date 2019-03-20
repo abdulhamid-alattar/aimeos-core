@@ -29,13 +29,19 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MAdmin\Log\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
 	public function testCreateItem()
 	{
 		$this->assertInstanceOf( \Aimeos\MAdmin\Log\Item\Iface::class, $this->object->createItem() );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MAdmin\Log\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -90,7 +96,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$criteria = $this->object->createSearch();
+		$criteria = $this->object->createSearch()->setSlice( 0, 1 );
 		$criteria->setConditions( $criteria->compare( '==', 'log.priority', 1 ) );
 		$result = $this->object->searchItems( $criteria );
 

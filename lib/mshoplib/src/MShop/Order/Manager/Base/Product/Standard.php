@@ -48,6 +48,14 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
+		'order.base.product.orderaddressid' => array(
+			'code' => 'order.base.product.orderaddressid',
+			'internalcode' => 'mordbapr."ordaddrid"',
+			'label' => 'Address ID for the product',
+			'type' => 'integer',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
+			'public' => false,
+		),
 		'order.base.product.orderproductid' => array(
 			'code' => 'order.base.product.orderproductid',
 			'internalcode' => 'mordbapr."ordprodid"',
@@ -246,7 +254,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key to aggregate items for
-	 * @return array List of the search keys as key and the number of counted items as value
+	 * @return integer[] List of the search keys as key and the number of counted items as value
 	 * @todo 2018.01 Add optional parameters to interface
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key, $value = null, $type = null )
@@ -347,7 +355,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Order\Manager\Base\Product\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -356,22 +365,20 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/order/manager/base/product/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/order/manager/base/product/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface New order product item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$context = $this->getContext();
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
 
 		$values['order.base.product.siteid'] = $context->getLocale()->getSiteId();
 
@@ -382,7 +389,7 @@ class Standard
 	/**
 	 * Returns order base product for the given product ID.
 	 *
-	 * @param integer $id Product ids to create product object for
+	 * @param string $id Product ids to create product object for
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Returns order base product item of the given id
@@ -397,7 +404,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Order\Manager\Base\Product\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -432,7 +440,8 @@ class Standard
 		 * @see mshop/order/manager/base/product/standard/count/ansi
 		 */
 		$path = 'mshop/order/manager/base/product/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -440,12 +449,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/order/manager/base/product/submanagers';
-
 		return $this->getResourceTypeBase( 'order/base/product', $path, array( 'attribute' ), $withsub );
 	}
 
@@ -454,7 +462,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array Returns a list of attributes implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -609,9 +617,9 @@ class Standard
 	/**
 	 * Adds or updates a order base product item to the storage.
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item New or existing product item that should be saved to the storage
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $item New or existing product item that should be saved to the storage
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -713,34 +721,35 @@ class Standard
 
 			$stmt->bind( 1, $item->getBaseId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 			$stmt->bind( 2, $item->getOrderProductId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 3, $item->getType() );
-			$stmt->bind( 4, $item->getProductId() );
-			$stmt->bind( 5, $item->getProductCode() );
-			$stmt->bind( 6, $item->getSupplierCode() );
-			$stmt->bind( 7, $item->getStockType() );
-			$stmt->bind( 8, $item->getName() );
-			$stmt->bind( 9, $item->getMediaUrl() );
-			$stmt->bind( 10, $item->getQuantity() );
-			$stmt->bind( 11, $price->getCurrencyId() );
-			$stmt->bind( 12, $price->getValue() );
-			$stmt->bind( 13, $price->getCosts() );
-			$stmt->bind( 14, $price->getRebate() );
-			$stmt->bind( 15, $price->getTaxValue() );
-			$stmt->bind( 16, $price->getTaxRate() );
-			$stmt->bind( 17, $price->getTaxFlag(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 18, $item->getFlags(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 19, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 20, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 21, $date ); // mtime
-			$stmt->bind( 22, $context->getEditor() );
-			$stmt->bind( 23, $item->getTarget() );
-			$stmt->bind( 24, $item->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 3, $item->getOrderAddressId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 4, $item->getType() );
+			$stmt->bind( 5, $item->getProductId() );
+			$stmt->bind( 6, $item->getProductCode() );
+			$stmt->bind( 7, $item->getSupplierCode() );
+			$stmt->bind( 8, $item->getStockType() );
+			$stmt->bind( 9, $item->getName() );
+			$stmt->bind( 10, $item->getMediaUrl() );
+			$stmt->bind( 11, $item->getQuantity() );
+			$stmt->bind( 12, $price->getCurrencyId() );
+			$stmt->bind( 13, $price->getValue() );
+			$stmt->bind( 14, $price->getCosts() );
+			$stmt->bind( 15, $price->getRebate() );
+			$stmt->bind( 16, $price->getTaxValue() );
+			$stmt->bind( 17, $price->getTaxRate() );
+			$stmt->bind( 18, $price->getTaxFlag(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 19, $item->getFlags(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 20, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 21, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 22, $date ); // mtime
+			$stmt->bind( 23, $context->getEditor() );
+			$stmt->bind( 24, $item->getTarget() );
+			$stmt->bind( 25, $item->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 			if( $id !== null ) {
-				$stmt->bind( 25, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+				$stmt->bind( 26, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 				$item->setId( $id );
 			} else {
-				$stmt->bind( 25, $date ); // ctime
+				$stmt->bind( 26, $date ); // ctime
 			}
 
 			$stmt->execute()->finish();
@@ -811,7 +820,7 @@ class Standard
 	{
 		$items = [];
 		$context = $this->getContext();
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
 
 		$dbm = $context->getDatabaseManager();
 		$dbname = $this->getResourceName();
@@ -986,9 +995,9 @@ class Standard
 	 * Creates new order base product item object initialized with given parameters.
 	 *
 	 * @param \Aimeos\MShop\Price\Item\Iface $price Price item object with product price
-	 * @param array $values Associative list of ordered product properties
-	 * @param array $attributes List of order product attributes that belong to the ordered product
-	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface
+	 * @param array $values Associative list of order product properties
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Attribute\Iface[] $attributes List of order product attributes
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Order product item
 	 */
 	protected function createItemBase( \Aimeos\MShop\Price\Item\Iface $price, array $values = [], array $attributes = [] )
 	{
@@ -1000,7 +1009,8 @@ class Standard
 	 * Searches for attribute items connected with order product item.
 	 *
 	 * @param string[] $ids List of order product item IDs
-	 * @return array List of items implementing \Aimeos\MShop\Order\Item\Base\Product\Attribute\Iface
+	 * @return array Associative list of order product IDs as keys and order product attribute items
+	 *  implementing \Aimeos\MShop\Order\Item\Base\Product\Attribute\Iface as values
 	 */
 	protected function getAttributeItems( $ids )
 	{

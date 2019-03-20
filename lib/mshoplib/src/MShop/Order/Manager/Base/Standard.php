@@ -110,13 +110,6 @@ class Standard extends Base
 			'type' => 'string',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
-		'order.base.status' => array(
-			'code' => 'order.base.status',
-			'internalcode' => 'mordba."status"',
-			'label' => 'Order subscription status',
-			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
-		),
 		'order.base.ctime' => array(
 			'code' => 'order.base.ctime',
 			'internalcode' => 'mordba."ctime"',
@@ -161,7 +154,7 @@ class Standard extends Base
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key to aggregate items for
-	 * @return array List of the search keys as key and the number of counted items as value
+	 * @return integer[] List of the search keys as key and the number of counted items as value
 	 * @todo 2018.01 Add optional parameters to interface
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key, $value = null, $type = null )
@@ -262,7 +255,8 @@ class Standard extends Base
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -273,39 +267,37 @@ class Standard extends Base
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/order/manager/base/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/order/manager/base/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Order\Item\Base\Iface New order base item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$context = $this->getContext();
 		$locale = $context->getLocale();
 
 		$values['order.base.siteid'] = $locale->getSiteId();
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
 
 		$base = $this->createItemBase( $priceManager->createItem(), clone $locale, $values );
 
-		\Aimeos\MShop\Factory::createManager( $context, 'plugin' )->register( $base, 'order' );
+		\Aimeos\MShop::create( $context, 'plugin' )->register( $base, 'order' );
 
 		return $base;
 	}
 
 
 	/**
-	 * Creates a search object
+	 * Creates a search critera object
 	 *
-	 * @param boolean $default Add default criteria
-	 * @return \Aimeos\MW\Criteria\Iface
+	 * @param boolean $default Add default criteria (optional)
+	 * @return \Aimeos\MW\Criteria\Iface New search criteria object
 	 */
 	public function createSearch( $default = false )
 	{
@@ -328,7 +320,8 @@ class Standard extends Base
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -363,14 +356,15 @@ class Standard extends Base
 		 * @see mshop/order/manager/base/standard/count/ansi
 		 */
 		$path = 'mshop/order/manager/base/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
 	/**
 	 * Returns the order base item specified by the given ID.
 	 *
-	 * @param integer $id Unique id of the order base
+	 * @param string $id Unique id of the order base
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Order\Item\Base\Iface Returns Order base item of the given id
@@ -386,13 +380,12 @@ class Standard extends Base
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/order/manager/base/submanagers';
-
-		return $this->getResourceTypeBase( 'order/base', $path, array( 'address', 'coupon', 'product', 'service' ), $withsub );
+		return $this->getResourceTypeBase( 'order/base', $path, ['address', 'coupon', 'product', 'service'], $withsub );
 	}
 
 
@@ -400,7 +393,7 @@ class Standard extends Base
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -556,9 +549,9 @@ class Standard extends Base
 	/**
 	 * Adds or updates an order base item in the storage.
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item Order base object (sub-items are not saved)
+	 * @param \Aimeos\MShop\Order\Item\Base\Iface $item Order base object (sub-items are not saved)
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -670,16 +663,15 @@ class Standard extends Base
 			$stmt->bind( 8, $priceItem->getTaxValue() );
 			$stmt->bind( 9, $priceItem->getTaxFlag(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 			$stmt->bind( 10, $item->getComment() );
-			$stmt->bind( 11, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 12, $date ); // mtime
-			$stmt->bind( 13, $context->getEditor() );
-			$stmt->bind( 14, $localeItem->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 11, $date ); // mtime
+			$stmt->bind( 12, $context->getEditor() );
+			$stmt->bind( 13, $localeItem->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 			if( $id !== null ) {
-				$stmt->bind( 15, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+				$stmt->bind( 14, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 				$item->setId( $id );
 			} else {
-				$stmt->bind( 15, $date ); // ctime
+				$stmt->bind( 14, $date ); // ctime
 			}
 
 			$stmt->execute()->finish();
@@ -752,8 +744,8 @@ class Standard extends Base
 		$map = [];
 
 		$context = $this->getContext();
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
-		$localeManager = \Aimeos\MShop\Factory::createManager( $context, 'locale' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
+		$localeManager = \Aimeos\MShop::create( $context, 'locale' );
 
 		$dbm = $context->getDatabaseManager();
 		$dbname = $this->getResourceName();
@@ -917,7 +909,7 @@ class Standard extends Base
 	 * If the last parameter is ture, the items will be marked as new and
 	 * modified so an additional order is stored when the basket is saved.
 	 *
-	 * @param integer $id Base ID of the order to load
+	 * @param string $id Base ID of the order to load
 	 * @param integer $parts Bitmap of the basket parts that should be loaded
 	 * @param boolean $fresh Create a new basket by copying the existing one and remove IDs
 	 * @param boolean $default True to use default criteria, false for no limitation
@@ -960,8 +952,8 @@ class Standard extends Base
 			throw $e;
 		}
 
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
-		$localeManager = \Aimeos\MShop\Factory::createManager( $context, 'locale' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
+		$localeManager = \Aimeos\MShop::create( $context, 'locale' );
 
 		$price = $priceManager->createItem();
 		$price->setCurrencyId( $row['order.base.currencyid'] );
@@ -983,7 +975,7 @@ class Standard extends Base
 			$basket = $this->loadFresh( $id, $price, $localeItem, $row, $parts );
 		}
 
-		$pluginManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'plugin' );
+		$pluginManager = \Aimeos\MShop::create( $this->getContext(), 'plugin' );
 		$pluginManager->register( $basket, 'order' );
 
 		return $basket;
@@ -1020,5 +1012,84 @@ class Standard extends Base
 		}
 
 		return $basket;
+	}
+
+
+	/**
+	 * Creates the order base item objects from the map and adds the referenced items
+	 *
+	 * @param array $map Associative list of order base IDs as keys and list of price/locale/row as values
+	 * @param string[] $ref Domain items that should be added as well, e.g.
+	 *	"order/base/address", "order/base/coupon", "order/base/product", "order/base/service"
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface[] Associative list of order base IDs as keys and items as values
+	 */
+	protected function buildItems( array $map, array $ref )
+	{
+		$items = [];
+		$baseIds = array_keys( $map );
+		$addressMap = $couponMap = $productMap = $serviceMap = [];
+
+		if( in_array( 'order/base/address', $ref ) ) {
+			$addressMap = $this->getAddresses( $baseIds );
+		}
+
+		if( in_array( 'order/base/product', $ref ) ) {
+			$productMap = $this->getProducts( $baseIds );
+		}
+
+		if( in_array( 'order/base/coupon', $ref ) ) {
+			$couponMap = $this->getCoupons( $baseIds, false, $productMap );
+		}
+
+		if( in_array( 'order/base/service', $ref ) ) {
+			$serviceMap = $this->getServices( $baseIds );
+		}
+
+		foreach( $map as $id => $list )
+		{
+			list( $price, $locale, $row ) = $list;
+			$addresses = $coupons = $products = $services = [];
+
+			if( isset( $addressMap[$id] ) ) {
+				$addresses = $addressMap[$id];
+			}
+
+			if( isset( $couponMap[$id] ) ) {
+				$coupons = $couponMap[$id];
+			}
+
+			if( isset( $productMap[$id] ) ) {
+				$products = $productMap[$id];
+			}
+
+			if( isset( $serviceMap[$id] ) ) {
+				$services = $serviceMap[$id];
+			}
+
+			$items[$id] = $this->createItemBase( $price, $locale, $row, $products, $addresses, $services, $coupons );
+		}
+
+		return $items;
+	}
+
+
+	/**
+	 * Returns a new and empty order base item (shopping basket).
+	 *
+	 * @param \Aimeos\MShop\Price\Item\Iface $price Default price of the basket (usually 0.00)
+	 * @param \Aimeos\MShop\Locale\Item\Iface $locale Locale item containing the site, language and currency
+	 * @param array $values Associative list of key/value pairs containing, e.g. the order or user ID
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $products List of ordered product items
+	 * @param \Aimeos\MShop\Order\Item\Base\Address\Iface[] $addresses List of order address items
+	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface[] $services List of order serviceitems
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $coupons Associative list of coupon codes as keys and items as values
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base object
+	 */
+	protected function createItemBase( \Aimeos\MShop\Price\Item\Iface $price, \Aimeos\MShop\Locale\Item\Iface $locale,
+		array $values = [], array $products = [], array $addresses = [],
+		array $services = [], array $coupons = [] )
+	{
+		return new \Aimeos\MShop\Order\Item\Base\Standard( $price, $locale,
+			$values, $products, $addresses, $services, $coupons );
 	}
 }

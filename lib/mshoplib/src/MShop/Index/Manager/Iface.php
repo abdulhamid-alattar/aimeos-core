@@ -19,14 +19,14 @@ namespace Aimeos\MShop\Index\Manager;
  * @subpackage Index
  */
 interface Iface
-	extends \Aimeos\MShop\Common\Manager\Iface
+	extends \Aimeos\MShop\Product\Manager\Iface
 {
 	/**
 	 * Counts the number products that are available for the values of the given key.
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key (usually the ID) to aggregate products for
-	 * @return array List of ID values as key and the number of counted products as value
+	 * @return integer[] List of ID values as key and the number of counted products as value
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key );
 
@@ -35,7 +35,8 @@ interface Iface
 	 * Optimizes the index if necessary.
 	 * This operation can last very long and it shouldn't be called by a script
 	 * executed by a web server.
-	 * @return void
+	 *
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function optimize();
 
@@ -45,7 +46,7 @@ interface Iface
 	 * This can be a long lasting operation.
 	 *
 	 * @param string $timestamp Timestamp in ISO format (YYYY-MM-DD HH:mm:ss)
-	 * @return void
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanupIndex( $timestamp );
 
@@ -55,7 +56,7 @@ interface Iface
 	 * This can be a long lasting operation.
 	 *
 	 * @param \Aimeos\MShop\Product\Item\Iface[] $items Associative list of product IDs as keys and items as values
-	 * @return void
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function rebuildIndex( array $items = [] );
 }

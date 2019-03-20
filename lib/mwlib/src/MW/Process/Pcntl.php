@@ -39,12 +39,13 @@ class Pcntl implements Iface
 
 		if( $this->isAvailable() )
 		{
-			$handler = function( $signo )
-			{
+			$handler = function( $signo ) {
+
 				foreach( $this->list as $pid => $entry )
 				{
+					$status = 0;
 					posix_kill( $pid, $signo );
-					pcntl_waitpid( $pid );
+					pcntl_waitpid( $pid, $status );
 				}
 
 				exit( 0 );

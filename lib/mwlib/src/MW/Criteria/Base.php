@@ -90,8 +90,8 @@ abstract class Base implements \Aimeos\MW\Criteria\Iface
 	 * 		'name2' => '-',
 	 * 	);
 	 *
-	 * @param array $array Single-dimensional array of name and operator pairs
-	 * @return array List of sort expressions implementing \Aimeos\MW\Criteria\Expression\Sort\Iface
+	 * @param string[] $array Single-dimensional array of name and operator pairs
+	 * @return \Aimeos\MW\Criteria\Expression\Sort\Iface[] List of sort expressions
 	 */
 	public function toSortations( array $array )
 	{
@@ -142,9 +142,8 @@ abstract class Base implements \Aimeos\MW\Criteria\Iface
 		foreach( $list as $entry )
 		{
 			$entry = (array) $entry;
-			$op = key( $entry );
 
-			if( ( $value = reset( $entry ) ) === false ) {
+			if( ( $op = key( $entry ) ) === null ) {
 				throw new \Aimeos\MW\Common\Exception( sprintf( 'Invalid combine condition array "%1$s"', json_encode( $entry ) ) );
 			}
 

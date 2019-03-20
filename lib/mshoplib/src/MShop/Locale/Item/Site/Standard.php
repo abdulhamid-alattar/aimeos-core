@@ -33,7 +33,7 @@ class Standard
 	 * Initializes the site object.
 	 *
 	 * @param array $values Associative list of item key/value pairs
-	 * @param array $children List of nodes implementing \Aimeos\MW\Tree\Node\Iface
+	 * @param \Aimeos\MW\Tree\Node\Iface[] $children List of tree nodes
 	 */
 	public function __construct( array $values = [], array $children = [] )
 	{
@@ -240,30 +240,32 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Locale\Item\Site\Iface Site item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'locale.site.code': $this->setCode( $value ); break;
-				case 'locale.site.label': $this->setLabel( $value ); break;
-				case 'locale.site.config': $this->setConfig( $value ); break;
-				case 'locale.site.status': $this->setStatus( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'locale.site.code': $item = $item->setCode( $value ); break;
+				case 'locale.site.label': $item = $item->setLabel( $value ); break;
+				case 'locale.site.config': $item = $item->setConfig( $value ); break;
+				case 'locale.site.status': $item = $item->setStatus( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 

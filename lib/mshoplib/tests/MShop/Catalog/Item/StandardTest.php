@@ -39,8 +39,9 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		);
 
 		$this->node = new \Aimeos\MW\Tree\Node\Standard( $this->values );
-		$child = new \Aimeos\MShop\Catalog\Item\Standard( $this->node );
+		$childnode = new \Aimeos\MW\Tree\Node\Standard( array_merge( $this->values, ['id' => 3] ) );
 
+		$child = new \Aimeos\MShop\Catalog\Item\Standard( $childnode );
 		$this->object = new \Aimeos\MShop\Catalog\Item\Standard( $this->node, array( $child ), $this->listItems );
 	}
 
@@ -217,7 +218,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$item = new \Aimeos\MShop\Catalog\Item\Standard( new \Aimeos\MW\Tree\Node\Standard() );
 
-		$list = array(
+		$list = $entries = array(
 			'catalog.id' => 1,
 			'catalog.code' => 'test',
 			'catalog.config' => array( 'test' ),
@@ -226,9 +227,9 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			'catalog.target' => 'ttarget',
 		);
 
-		$unknown = $item->fromArray( $list );
+		$item = $item->fromArray( $entries, true );
 
-		$this->assertEquals( [], $unknown );
+		$this->assertEquals( [], $entries );
 
 		$this->assertEquals( $list['catalog.id'], $item->getId() );
 		$this->assertEquals( $list['catalog.code'], $item->getCode() );
@@ -321,5 +322,15 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testGetNode()
 	{
 		$this->assertInstanceOf( \Aimeos\MW\Tree\Node\Iface::class, $this->object->getNode() );
+	}
+
+
+	public function testToList()
+	{
+		$list = $this->object->toList();
+
+		$this->assertEquals( 2, count( $list ) );
+		$this->assertArrayHasKey( '2', $list );
+		$this->assertArrayHasKey( '3', $list );
 	}
 }

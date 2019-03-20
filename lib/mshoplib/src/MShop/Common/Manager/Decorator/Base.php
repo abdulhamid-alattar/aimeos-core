@@ -55,25 +55,25 @@ abstract class Base
 	/**
 	 * Removes old entries from the storage
 	 *
-	 * @param array $siteids List of IDs for sites Whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites Whose entries should be deleted
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		$this->manager->cleanup( $siteids );
+		return $this;
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Common\Item\Iface New item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
-		return $this->manager->createItem( $type, $domain, $values );
+		return $this->manager->createItem( $values );
 	}
 
 
@@ -92,22 +92,26 @@ abstract class Base
 	/**
 	 * Deletes the item specified by its ID.
 	 *
-	 * @param integer $id ID of the item object
+	 * @param string $id ID of the item object
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItem( $id )
 	{
 		$this->manager->deleteItem( $id );
+		return $this;
 	}
 
 
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
 		$this->manager->deleteItems( $ids );
+		return $this;
 	}
 
 
@@ -121,7 +125,7 @@ abstract class Base
 	 * @param boolean $default True to add default criteria
 	 * @return \Aimeos\MShop\Common\Item\Iface Item object
 	 */
-	public function findItem( $code, array $ref = [], $domain = 'product', $type = null, $default = false )
+	public function findItem( $code, array $ref = [], $domain = null, $type = null, $default = false )
 	{
 		return $this->manager->findItem( $code, $ref, $domain, $type, $default );
 	}
@@ -130,7 +134,7 @@ abstract class Base
 	/**
 	 * Returns the item specified by its ID
 	 *
-	 * @param integer $id Unique ID of the item
+	 * @param string $id Unique ID of the item
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Common\Item\Iface Item object
@@ -144,7 +148,7 @@ abstract class Base
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
@@ -156,7 +160,7 @@ abstract class Base
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -218,25 +222,6 @@ abstract class Base
 
 
 	/**
-	 * Search for all referenced items from the list based on the given critera.
-	 *
-	 * Only criteria from the list and list type can be used for searching and
-	 * sorting, but no criteria from the referenced items.
-	 *
-	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
-	 * @param string[] $ref List of domains to fetch list items and referenced items for
-	 * @param integer|null &$total Number of items that are available in total
-	 * @return array Associative list of domains as keys and lists with pairs of IDs and items implementing \Aimeos\MShop\Common\Item\Iface
-	 * @throws \Aimeos\MShop\Exception if creating items failed
-	 * @see \Aimeos\MW\Criteria\SQL
-	 */
-	public function searchRefItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
-	{
-		return $this->manager->searchRefItems( $search, $ref, $total );
-	}
-
-
-	/**
 	 * Injects the reference of the outmost object
 	 *
 	 * @param \Aimeos\MShop\Common\Manager\Iface $object Reference to the outmost manager or decorator
@@ -253,35 +238,44 @@ abstract class Base
 
 
 	/**
-	 * Starts a database transaction on the connection identified by the given name.
+	 * Starts a database transaction on the connection identified by the given name
+	 *
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function begin()
 	{
 		$this->manager->begin();
+		return $this;
 	}
 
 
 	/**
-	 * Commits the running database transaction on the connection identified by the given name.
+	 * Commits the running database transaction on the connection identified by the given name
+	 *
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function commit()
 	{
 		$this->manager->commit();
+		return $this;
 	}
 
 
 	/**
-	 * Rolls back the running database transaction on the connection identified by the given name.
+	 * Rolls back the running database transaction on the connection identified by the given name
+	 *
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object for chaining method calls
 	 */
 	public function rollback()
 	{
 		$this->manager->rollback();
+		return $this;
 	}
 
 
 
 	/**
-	 * Returns the manager object.
+	 * Returns the manager object
 	 *
 	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object
 	 */

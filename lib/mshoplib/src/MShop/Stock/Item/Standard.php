@@ -52,42 +52,16 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
-	 *
-	 * @return string|null Localized name of the type
-	 */
-	public function getTypeName()
-	{
-		if( isset( $this->values['stock.typename'] ) ) {
-			return (string) $this->values['stock.typename'];
-		}
-	}
-
-
-	/**
-	 * Returns the type id of the product stock item
-	 *
-	 * @return string|null Type of the product stock item
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values['stock.typeid'] ) ) {
-			return (string) $this->values['stock.typeid'];
-		}
-	}
-
-
-	/**
 	 * Sets the new type of the product stock item
 	 *
-	 * @param string $id Type of the product stock item
+	 * @param string $type Type of the product stock item
 	 * @return \Aimeos\MShop\Stock\Item\Iface Stock item for chaining method calls
 	 */
-	public function setTypeId( $id )
+	public function setType( $type )
 	{
-		if( (string) $id !== $this->getTypeId() )
+		if( (string) $type !== $this->getType() )
 		{
-			$this->values['stock.typeid'] = (string) $id;
+			$this->values['stock.type'] = (string) $type;
 			$this->setModified();
 		}
 
@@ -205,30 +179,32 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Stock\Item\Iface Stock item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'stock.productcode': $this->setProductCode( $value ); break;
-				case 'stock.stocklevel': $this->setStocklevel( $value ); break;
-				case 'stock.dateback': $this->setDateBack( $value ); break;
-				case 'stock.typeid': $this->setTypeId( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'stock.productcode': $item = $item->setProductCode( $value ); break;
+				case 'stock.stocklevel': $item = $item->setStocklevel( $value ); break;
+				case 'stock.dateback': $item = $item->setDateBack( $value ); break;
+				case 'stock.type': $item = $item->setType( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -245,12 +221,7 @@ class Standard
 		$list['stock.productcode'] = $this->getProductCode();
 		$list['stock.stocklevel'] = $this->getStocklevel();
 		$list['stock.dateback'] = $this->getDateBack();
-		$list['stock.typename'] = $this->getTypeName();
 		$list['stock.type'] = $this->getType();
-
-		if( $private === true ) {
-			$list['stock.typeid'] = $this->getTypeId();
-		}
 
 		return $list;
 	}

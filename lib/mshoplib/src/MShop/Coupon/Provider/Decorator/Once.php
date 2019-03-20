@@ -29,22 +29,19 @@ class Once
 	 */
 	public function isAvailable( \Aimeos\MShop\Order\Item\Base\Iface $base )
 	{
-		$addresses = $base->getAddresses();
-		$type = \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT;
+		$addresses = $base->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 
-		if( isset( $addresses[$type] ) )
+		if( ( $address = current( $addresses ) ) !== false )
 		{
-			$address = $addresses[$type];
-			$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order' );
+			$manager = \Aimeos\MShop::create( $this->getContext(), 'order' );
 
-			$search = $manager->createSearch();
+			$search = $manager->createSearch()->setSlice( 0, 1 );
 			$expr = [
 				$search->compare( '==', 'order.base.address.email', $address->getEmail() ),
 				$search->compare( '==', 'order.base.coupon.code', $this->getCode() ),
 				$search->compare( '>=', 'order.statuspayment', \Aimeos\MShop\Order\Item\Base::PAY_PENDING ),
 			];
 			$search->setConditions( $search->combine( '&&', $expr ) );
-			$search->setSlice( 0, 1 );
 
 			if( count( $manager->searchItems( $search ) ) > 0 ) {
 				return false;

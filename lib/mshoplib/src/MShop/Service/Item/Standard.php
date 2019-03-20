@@ -46,7 +46,7 @@ class Standard
 
 
 	/**
-	 * Returns the code of the service item payment if available.
+	 * Returns the code of the service item if available
 	 *
 	 * @return string Service item code
 	 */
@@ -61,9 +61,9 @@ class Standard
 
 
 	/**
-	 * Sets the code of the service item payment.
+	 * Sets the code of the service item
 	 *
-	 * @param string code of the service item payment
+	 * @param string $code Code of the service item
 	 * @return \Aimeos\MShop\Service\Item\Iface Service item for chaining method calls
 	 */
 	public function setCode( $code )
@@ -92,42 +92,16 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
+	 * Sets the type of the service item.
 	 *
-	 * @return string|null Localized name of the type
-	 */
-	public function getTypeName()
-	{
-		if( isset( $this->values['service.typename'] ) ) {
-			return (string) $this->values['service.typename'];
-		}
-	}
-
-
-	/**
-	 * Returns the type ID of the service item if available.
-	 *
-	 * @return string|null Service item type ID
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values['service.typeid'] ) ) {
-			return (string) $this->values['service.typeid'];
-		}
-	}
-
-
-	/**
-	 * Sets the type ID of the service item.
-	 *
-	 * @param string Type ID of the service item
+	 * @param string $type Type of the service item
 	 * @return \Aimeos\MShop\Service\Item\Iface Service item for chaining method calls
 	 */
-	public function setTypeId( $typeId )
+	public function setType( $type )
 	{
-		if( (string) $typeId !== $this->getTypeId() )
+		if( (string) $type !== $this->getType() )
 		{
-			$this->values['service.typeid'] = (string) $typeId;
+			$this->values['service.type'] = (string) $type;
 			$this->setModified();
 		}
 
@@ -173,7 +147,7 @@ class Standard
 
 
 	/**
-	 * Returns the label of the service item payment if available.
+	 * Returns the label of the service item if available.
 	 *
 	 * @return string Service item label
 	 */
@@ -188,9 +162,9 @@ class Standard
 
 
 	/**
-	 * Sets the label of the service item payment.
+	 * Sets the label of the service item
 	 *
-	 * @param string label of the service item payment
+	 * @param string $label Label of the service item
 	 * @return \Aimeos\MShop\Service\Item\Iface Service item for chaining method calls
 	 */
 	public function setLabel( $label )
@@ -221,7 +195,7 @@ class Standard
 	/**
 	 * Sets a new starting point of time, in which the service is available.
 	 *
-	 * @param string|null New ISO date in YYYY-MM-DD hh:mm:ss format
+	 * @param string|null $date New ISO date in YYYY-MM-DD hh:mm:ss format
 	 * @return \Aimeos\MShop\Product\Item\Iface Product item for chaining method calls
 	 */
 	public function setDateStart( $date )
@@ -252,7 +226,7 @@ class Standard
 	/**
 	 * Sets a new ending point of time, in which the service is available.
 	 *
-	 * @param string|null New ISO date in YYYY-MM-DD hh:mm:ss format
+	 * @param string|null $date New ISO date in YYYY-MM-DD hh:mm:ss format
 	 * @return \Aimeos\MShop\Product\Item\Iface Product item for chaining method calls
 	 */
 	public function setDateEnd( $date )
@@ -387,36 +361,37 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Service\Item\Iface Service item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
-		unset( $list['service.type'], $list['service.typename'] );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'service.typeid': $this->setTypeId( $value ); break;
-				case 'service.code': $this->setCode( $value ); break;
-				case 'service.label': $this->setLabel( $value ); break;
-				case 'service.provider': $this->setProvider( $value ); break;
-				case 'service.position': $this->setPosition( $value ); break;
-				case 'service.datestart': $this->setDateStart( $value ); break;
-				case 'service.dateend': $this->setDateEnd( $value ); break;
-				case 'service.config': $this->setConfig( $value ); break;
-				case 'service.status': $this->setStatus( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'service.type': $item = $item->setType( $value ); break;
+				case 'service.code': $item = $item->setCode( $value ); break;
+				case 'service.label': $item = $item->setLabel( $value ); break;
+				case 'service.provider': $item = $item->setProvider( $value ); break;
+				case 'service.position': $item = $item->setPosition( $value ); break;
+				case 'service.datestart': $item = $item->setDateStart( $value ); break;
+				case 'service.dateend': $item = $item->setDateEnd( $value ); break;
+				case 'service.config': $item = $item->setConfig( $value ); break;
+				case 'service.status': $item = $item->setStatus( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -430,7 +405,6 @@ class Standard
 	{
 		$list = parent::toArray( $private );
 
-		$list['service.typename'] = $this->getTypeName();
 		$list['service.type'] = $this->getType();
 		$list['service.code'] = $this->getCode();
 		$list['service.label'] = $this->getLabel();
@@ -440,10 +414,6 @@ class Standard
 		$list['service.dateend'] = $this->getDateEnd();
 		$list['service.config'] = $this->getConfig();
 		$list['service.status'] = $this->getStatus();
-
-		if( $private === true ) {
-			$list['service.typeid'] = $this->getTypeId();
-		}
 
 		return $list;
 	}

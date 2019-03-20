@@ -20,14 +20,14 @@ namespace Aimeos\MShop\Plugin\Provider\Order;
  * item and the customer address(es) to the basket.
  *
  * The following options are available:
- * - autofill.address: 1 (add billing address of the logged in customer to the basket)
- * - autofill.delivery: 1 (add the first delivery option to the basket)
- * - autofill.deliverycode: '...' and autofill.delivery: 1 (add specific delivery option to the basket)
- * - autofill.payment: 1 (add the first payment option to the basket)
- * - autofill.paymentcode: '...' and autofill.payment: 1 (add specific payment option to the basket)
- * - autofill.useorder: 1 (use last order of the customer to pre-fill addresses or services)
- * - autofill.orderservice: 1 (add delivery and payment services from the last order of the customer)
- * - autofill.orderaddress: 1 (add billing and delivery addresses from the last order of the customer)
+ * - address: 1 (add billing address of the logged in customer to the basket)
+ * - delivery: 1 (add the first delivery option to the basket)
+ * - deliverycode: '...' and delivery: 1 (add specific delivery option to the basket)
+ * - payment: 1 (add the first payment option to the basket)
+ * - paymentcode: '...' and payment: 1 (add specific payment option to the basket)
+ * - useorder: 1 (use last order of the customer to pre-fill addresses or services)
+ * - orderservice: 1 (add delivery and payment services from the last order of the customer)
+ * - orderaddress: 1 (add billing and delivery addresses from the last order of the customer)
  *
  * This plugin interacts with other plugins that add products or remove services!
  * Especially the "ServiceUpdate" plugin may remove a delivery/payment option
@@ -44,72 +44,72 @@ class Autofill
 	implements \Aimeos\MShop\Plugin\Provider\Iface, \Aimeos\MShop\Plugin\Provider\Factory\Iface
 {
 	private $beConfig = array(
-		'autofill.address' => array(
-			'code' => 'autofill.address',
-			'internalcode' => 'autofill.address',
+		'address' => array(
+			'code' => 'address',
+			'internalcode' => 'address',
 			'label' => 'Add customer address automatically',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.delivery' => array(
-			'code' => 'autofill.delivery',
-			'internalcode' => 'autofill.delivery',
+		'delivery' => array(
+			'code' => 'delivery',
+			'internalcode' => 'delivery',
 			'label' => 'Add delivery option automatically',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.deliverycode' => array(
-			'code' => 'autofill.deliverycode',
-			'internalcode' => 'autofill.deliverycode',
+		'deliverycode' => array(
+			'code' => 'deliverycode',
+			'internalcode' => 'deliverycode',
 			'label' => 'Add delivery by code',
 			'type' => 'string',
 			'internaltype' => 'string',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.payment' => array(
-			'code' => 'autofill.payment',
-			'internalcode' => 'autofill.payment',
+		'payment' => array(
+			'code' => 'payment',
+			'internalcode' => 'payment',
 			'label' => 'Add payment option automatically',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.paymentcode' => array(
-			'code' => 'autofill.paymentcode',
-			'internalcode' => 'autofill.paymentcode',
+		'paymentcode' => array(
+			'code' => 'paymentcode',
+			'internalcode' => 'paymentcode',
 			'label' => 'Add payment by code',
 			'type' => 'string',
 			'internaltype' => 'string',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.useorder' => array(
-			'code' => 'autofill.useorder',
-			'internalcode' => 'autofill.useorder',
+		'useorder' => array(
+			'code' => 'useorder',
+			'internalcode' => 'useorder',
 			'label' => 'Add from last order',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.orderaddress' => array(
-			'code' => 'autofill.orderaddress',
-			'internalcode' => 'autofill.orderaddress',
+		'orderaddress' => array(
+			'code' => 'orderaddress',
+			'internalcode' => 'orderaddress',
 			'label' => 'Add address from last order',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
 			'default' => '',
 			'required' => false,
 		),
-		'autofill.orderservice' => array(
-			'code' => 'autofill.orderservice',
-			'internalcode' => 'autofill.orderservice',
+		'orderservice' => array(
+			'code' => 'orderservice',
+			'internalcode' => 'orderservice',
 			'label' => 'Add delivery/payment from last order',
 			'type' => 'boolean',
 			'internaltype' => 'boolean',
@@ -150,11 +150,16 @@ class Autofill
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'addProduct.after' );
-		$p->addListener( $this->getObject(), 'deleteService.after' );
+		$plugin = $this->getObject();
+
+		$p->attach( $plugin, 'addProduct.after' );
+		$p->attach( $plugin, 'deleteService.after' );
+
+		return $this;
 	}
 
 
@@ -164,8 +169,8 @@ class Autofill
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
 	 * @throws \Aimeos\MShop\Plugin\Provider\Exception if an error occurs
-	 * @return bool true if subsequent plugins should be processed
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
@@ -176,10 +181,10 @@ class Autofill
 		$addresses = $order->getAddresses();
 
 		if( ( $userid = $context->getUserId() ) !== null
-			&& (bool) $this->getConfigValue( 'autofill.useorder', false ) === true
+			&& (bool) $this->getConfigValue( 'useorder', false ) === true
 			&& ( empty( $addresses ) || empty( $services ) )
 		) {
-			$orderManager = \Aimeos\MShop\Factory::createManager( $context, 'order' );
+			$orderManager = \Aimeos\MShop::create( $context, 'order' );
 
 			$search = $orderManager->createSearch();
 			$search->setConditions( $search->compare( '==', 'order.base.customerid', $userid ) );
@@ -198,7 +203,7 @@ class Autofill
 		$this->setAddressDefault( $order );
 		$this->setServicesDefault( $order );
 
-		return true;
+		return $value;
 	}
 
 
@@ -213,7 +218,7 @@ class Autofill
 	protected function getServiceItem( \Aimeos\MShop\Order\Item\Base\Iface $order, $type, $code = null )
 	{
 		$context = $this->getContext();
-		$serviceManager = \Aimeos\MShop\Factory::createManager( $context, 'service' );
+		$serviceManager = \Aimeos\MShop::create( $context, 'service' );
 
 		$search = $serviceManager->createSearch( true );
 
@@ -223,7 +228,7 @@ class Autofill
 			$expr[] = $search->compare( '==', 'service.code', $code );
 		}
 
-		$expr[] = $search->compare( '==', 'service.type.code', $type );
+		$expr[] = $search->compare( '==', 'service.type', $type );
 		$expr[] = $search->getConditions();
 
 		$search->setConditions( $search->combine( '&&', $expr ) );
@@ -237,12 +242,8 @@ class Autofill
 
 			if( $provider->isAvailable( $order ) === true )
 			{
-				$orderServiceManager = \Aimeos\MShop\Factory::createManager( $context, 'order/base/service' );
-				$orderServiceItem = $orderServiceManager->createItem();
-				$orderServiceItem->copyFrom( $item );
-				$orderServiceItem->setPrice( $provider->calcPrice( $order ) );
-
-				return $orderServiceItem;
+				return \Aimeos\MShop::create( $context, 'order/base/service' )->createItem()
+					->copyFrom( $item )->setPrice( $provider->calcPrice( $order ) );
 			}
 		}
 	}
@@ -258,16 +259,17 @@ class Autofill
 	{
 		$addresses = $order->getAddresses();
 
-		if( empty( $addresses ) && (bool) $this->getConfigValue( 'autofill.orderaddress', true ) === true )
+		if( empty( $addresses ) && (bool) $this->getConfigValue( 'orderaddress', true ) === true )
 		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order/base/address' );
+			$manager = \Aimeos\MShop::create( $this->getContext(), 'order/base/address' );
 			$search = $manager->createSearch();
 			$search->setConditions( $search->compare( '==', 'order.base.address.baseid', $item->getBaseId() ) );
-			$addresses = $manager->searchItems( $search );
 
-			foreach( $addresses as $address ) {
-				$order->setAddress( $address, $address->getType() );
+			foreach( $manager->searchItems( $search ) as $address ) {
+				$addresses[$address->getType()][] = $address;
 			}
+
+			$order->setAddresses( $addresses );
 		}
 	}
 
@@ -282,21 +284,22 @@ class Autofill
 	{
 		$services = $order->getServices();
 
-		if( empty( $services ) && $this->getConfigValue( 'autofill.orderservice', true ) == true )
+		if( empty( $services ) && $this->getConfigValue( 'orderservice', true ) == true )
 		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order/base/service' );
+			$manager = \Aimeos\MShop::create( $this->getContext(), 'order/base/service' );
 			$search = $manager->createSearch();
 			$search->setConditions( $search->compare( '==', 'order.base.service.baseid', $item->getBaseId() ) );
-			$services = $manager->searchItems( $search );
 
-			foreach( $services as $service )
+			foreach( $manager->searchItems( $search ) as $service )
 			{
 				$type = $service->getType();
 
 				if( ( $item = $this->getServiceItem( $order, $type, $service->getCode() ) ) !== null ) {
-					$order->addService( $item, $type );
+					$services[$type][] = $item;
 				}
 			}
+
+			$order->setServices( $services );
 		}
 	}
 
@@ -313,17 +316,15 @@ class Autofill
 		$type = \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT;
 
 		if( $context->getUserId() !== null && !isset( $addresses[$type] )
-			&& (bool) $this->getConfigValue( 'autofill.address', false ) === true
+			&& (bool) $this->getConfigValue( 'address', false ) === true
 		) {
-			$customerManager = \Aimeos\MShop\Factory::createManager( $context, 'customer' );
-			$orderAddressManager = \Aimeos\MShop\Factory::createManager( $context, 'order/base/address' );
+			$address = \Aimeos\MShop::create( $context, 'customer' )
+				->getItem( $context->getUserId() )->getPaymentAddress();
 
-			$address = $customerManager->getItem( $context->getUserId() )->getPaymentAddress();
+			$addrItem = \Aimeos\MShop::create( $context, 'order/base/address' )
+				->createItem()->copyFrom( $address );
 
-			$orderAddressItem = $orderAddressManager->createItem();
-			$orderAddressItem->copyFrom( $address );
-
-			$order->setAddress( $orderAddressItem, $type );
+			$order->addAddress( $addrItem, $type );
 		}
 	}
 
@@ -335,12 +336,10 @@ class Autofill
 	 */
 	protected function setServicesDefault( \Aimeos\MShop\Order\Item\Base\Iface $order )
 	{
-		$services = $order->getServices();
-
 		$type = \Aimeos\MShop\Order\Item\Base\Service\Base::TYPE_DELIVERY;
 
-		if( !isset( $services[$type] ) && (bool) $this->getConfigValue( 'autofill.delivery', false ) === true
-			&& ( ( $item = $this->getServiceItem( $order, $type, $this->getConfigValue( 'autofill.deliverycode' ) ) ) !== null
+		if( $order->getService( $type ) === [] && (bool) $this->getConfigValue( 'delivery', false ) === true
+			&& ( ( $item = $this->getServiceItem( $order, $type, $this->getConfigValue( 'deliverycode' ) ) ) !== null
 			|| ( $item = $this->getServiceItem( $order, $type ) ) !== null )
 		) {
 			$order->addService( $item, $type );
@@ -349,8 +348,8 @@ class Autofill
 
 		$type = \Aimeos\MShop\Order\Item\Base\Service\Base::TYPE_PAYMENT;
 
-		if( !isset( $services[$type] ) && (bool) $this->getConfigValue( 'autofill.payment', false ) === true
-			&& ( ( $item = $this->getServiceItem( $order, $type, $this->getConfigValue( 'autofill.paymentcode' ) ) ) !== null
+		if( $order->getService( $type ) === [] && (bool) $this->getConfigValue( 'payment', false ) === true
+			&& ( ( $item = $this->getServiceItem( $order, $type, $this->getConfigValue( 'paymentcode' ) ) ) !== null
 			|| ( $item = $this->getServiceItem( $order, $type ) ) !== null )
 		) {
 			$order->addService( $item, $type );

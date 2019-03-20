@@ -31,7 +31,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -42,7 +48,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertContains( 'supplier', $result );
 		$this->assertContains( 'supplier/address', $result );
 		$this->assertContains( 'supplier/lists', $result );
-		$this->assertContains( 'supplier/lists/type', $result );
 	}
 
 
@@ -71,7 +76,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '~=', 'supplier.label', 'unitSupplier' ),
 			$search->compare( '==', 'supplier.editor', $this->editor ),
@@ -158,6 +163,12 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSearchItem()
 	{
+		$item = $this->object->findItem( 'unitCode001', ['text'] );
+
+		if( ( $listItem = current( $item->getListItems( 'text', 'default' ) ) ) === false ) {
+			throw new \RuntimeException( 'No list item found' );
+		}
+
 		$search = $this->object->createSearch();
 
 		$expr = [];
@@ -169,6 +180,18 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '>=', 'supplier.mtime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '>=', 'supplier.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'supplier.editor', $this->editor );
+
+		$param = ['text','default', '0'];
+		$expr[] = $search->compare( '==', $search->createFunction( 'supplier:has', $param ), null );
+
+		$param = ['text','default', $listItem->getRefId()];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'supplier:has', $param ), null );
+
+		$param = ['text','default'];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'supplier:has', $param ), null );
+
+		$param = ['text'];
+		$expr[] = $search->compare( '!=', $search->createFunction( 'supplier:has', $param ), null );
 
 		$expr[] = $search->compare( '!=', 'supplier.address.id', null );
 		$expr[] = $search->compare( '!=', 'supplier.address.siteid', null );
@@ -194,31 +217,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '>=', 'supplier.address.mtime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '>=', 'supplier.address.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'supplier.address.editor', $this->editor );
-
-		$expr[] = $search->compare( '!=', 'supplier.lists.id', null );
-		$expr[] = $search->compare( '!=', 'supplier.lists.siteid', null );
-		$expr[] = $search->compare( '>', 'supplier.lists.parentid', 0 );
-		$expr[] = $search->compare( '==', 'supplier.lists.domain', 'text' );
-		$expr[] = $search->compare( '>', 'supplier.lists.typeid', 0 );
-		$expr[] = $search->compare( '>', 'supplier.lists.refid', 0 );
-		$expr[] = $search->compare( '>=', 'supplier.lists.datestart', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'supplier.lists.dateend', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '!=', 'supplier.lists.config', null );
-		$expr[] = $search->compare( '>', 'supplier.lists.position', 0 );
-		$expr[] = $search->compare( '==', 'supplier.lists.status', 1 );
-		$expr[] = $search->compare( '>=', 'supplier.lists.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'supplier.lists.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'supplier.lists.editor', $this->editor );
-
-		$expr[] = $search->compare( '!=', 'supplier.lists.type.id', null );
-		$expr[] = $search->compare( '!=', 'supplier.lists.type.siteid', null );
-		$expr[] = $search->compare( '==', 'supplier.lists.type.code', 'default' );
-		$expr[] = $search->compare( '==', 'supplier.lists.type.domain', 'text' );
-		$expr[] = $search->compare( '>', 'supplier.lists.type.label', '' );
-		$expr[] = $search->compare( '==', 'supplier.lists.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'supplier.lists.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'supplier.lists.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'supplier.lists.type.editor', $this->editor );
 
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$result = $this->object->searchItems( $search );

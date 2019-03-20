@@ -85,7 +85,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key (usually the ID) to aggregate products for
-	 * @return array List of ID values as key and the number of counted products as value
+	 * @return integer[] List of ID values as key and the number of counted products as value
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key )
 	{
@@ -96,13 +96,14 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		parent::cleanup( $siteids );
 
-		$this->cleanupBase( $siteids, 'mshop/index/manager/price/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/index/manager/price/standard/delete' );
 	}
 
 
@@ -111,6 +112,7 @@ class Standard
 	 * This can be a long lasting operation.
 	 *
 	 * @param string $timestamp Timestamp in ISO format (YYYY-MM-DD HH:mm:ss)
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanupIndex( $timestamp )
 	{
@@ -144,14 +146,14 @@ class Standard
 		 * @see mshop/index/manager/price/standard/insert/ansi
 		 * @see mshop/index/manager/price/standard/search/ansi
 		 */
-		$this->cleanupIndexBase( $timestamp, 'mshop/index/manager/price/standard/cleanup' );
+		return $this->cleanupIndexBase( $timestamp, 'mshop/index/manager/price/standard/cleanup' );
 	}
 
 
 	/**
 	 * Removes multiple items from the index.
 	 *
-	 * @param array $ids list of Product IDs
+	 * @param string[] $ids List of Product IDs
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -184,7 +186,7 @@ class Standard
 		 * @see mshop/index/manager/price/standard/insert/ansi
 		 * @see mshop/index/manager/price/standard/search/ansi
 		 */
-		$this->deleteItemsBase( $ids, 'mshop/index/manager/price/standard/delete' );
+		return $this->deleteItemsBase( $ids, 'mshop/index/manager/price/standard/delete' );
 	}
 
 
@@ -192,7 +194,7 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
@@ -231,9 +233,7 @@ class Standard
 		 */
 		$path = 'mshop/index/manager/price/submanagers';
 
-		$list += $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
-
-		return $list;
+		return $list + $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -366,6 +366,8 @@ class Standard
 	 * Optimizes the index if necessary.
 	 * Execution of this operation can take a very long time and shouldn't be
 	 * called through a web server enviroment.
+	 *
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function optimize()
 	{
@@ -394,7 +396,7 @@ class Standard
 		 * @see mshop/index/manager/price/standard/search/ansi
 		 * @see mshop/index/manager/price/standard/aggregate/ansi
 		 */
-		$this->optimizeBase( 'mshop/index/manager/price/standard/optimize' );
+		return $this->optimizeBase( 'mshop/index/manager/price/standard/optimize' );
 	}
 
 
@@ -403,10 +405,11 @@ class Standard
 	 * This can be a long lasting operation.
 	 *
 	 * @param \Aimeos\MShop\Product\Item\Iface[] $items Associative list of product IDs as keys and items as values
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function rebuildIndex( array $items = [] )
 	{
-		if( empty( $items ) ) { return; }
+		if( empty( $items ) ) { return $this; }
 
 		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Product\Item\Iface::class, $items );
 
@@ -465,10 +468,11 @@ class Standard
 			throw $e;
 		}
 
-
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->rebuildIndex( $items );
 		}
+
+		return $this;
 	}
 
 
@@ -597,7 +601,7 @@ class Standard
 	/**
 	 * Returns the list of sub-managers available for the index attribute manager.
 	 *
-	 * @return array Associative list of the sub-domain as key and the manager object as value
+	 * @return \Aimeos\MShop\Index\Manager\Iface Associative list of the sub-domain as key and the manager object as value
 	 */
 	protected function getSubManagers()
 	{
@@ -644,28 +648,44 @@ class Standard
 	 */
 	protected function savePrices( \Aimeos\MW\DB\Statement\Iface $stmt, \Aimeos\MShop\Common\Item\ListRef\Iface $item )
 	{
+		$prices = [];
+		$date = date( 'Y-m-d H:i:s' );
 		$context = $this->getContext();
 		$siteid = $context->getLocale()->getSiteId();
-		$editor = $context->getEditor();
-		$date = date( 'Y-m-d H:i:s' );
 
-		foreach( $item->getListItems( 'price', 'default', 'default' ) as $listItem )
+		/** mshop/index/manager/price/types
+		 * Use different product prices types for sorting by price
+		 *
+		 * In some cases, prices are stored with different types, eg. price per kg.
+		 * This configuration option defines which types are incorporated when sorting
+		 * the product list by price.
+		 *
+		 * @param array List of price types codes
+		 * @since 2019.04
+		 * @category Developer
+		 */
+		$types = $context->getConfig()->get( 'mshop/index/manager/price/types', 'default' );
+
+		foreach( $item->getListItems( 'price', 'default', $types ) as $listItem )
 		{
-			if( ( $refItem = $listItem->getRefItem() ) === null ) {
-				continue;
+			if( ( $refItem = $listItem->getRefItem() ) !== null && $refItem->isAvailable() ) {
+				$prices[$refItem->getCurrencyId()][$refItem->getQuantity()] = $refItem->getValue();
 			}
+		}
+
+		foreach( $prices as $currencyId => $list )
+		{
+			ksort( $list );
 
 			$stmt->bind( 1, $item->getId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 2, $refItem->getCurrencyId() );
-			$stmt->bind( 3, $refItem->getValue() );
+			$stmt->bind( 2, $currencyId );
+			$stmt->bind( 3, reset( $list ) );
 			$stmt->bind( 4, $date ); // mtime
 			$stmt->bind( 5, $siteid, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 			try {
 				$stmt->execute()->finish();
 			} catch( \Aimeos\MW\DB\Exception $e ) { ; } // Ignore duplicates
-
-			break; // only first price
 		}
 	}
 }

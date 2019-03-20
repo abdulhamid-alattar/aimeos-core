@@ -20,10 +20,10 @@ class SingletonTest extends \PHPUnit\Framework\TestCase
 	{
 		$context = \TestHelperMShop::getContext();
 
-		$priceItem = \Aimeos\MShop\Price\Manager\Factory::createManager( $context )->createItem();
+		$priceItem = \Aimeos\MShop\Price\Manager\Factory::create( $context )->createItem();
 		$this->order = new \Aimeos\MShop\Order\Item\Base\Standard( $priceItem, $context->getLocale() );
 
-		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::createManager( $context );
+		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::create( $context );
 		$item = $pluginManager->createItem();
 
 
@@ -64,8 +64,9 @@ class SingletonTest extends \PHPUnit\Framework\TestCase
 
 	public function testUpdate()
 	{
-		$this->mock->expects( $this->once() )->method( 'update' )->will( $this->returnValue( true ) );
+		$value = 'value';
+		$this->mock->expects( $this->once() )->method( 'update' )->will( $this->returnValue( $value ) );
 
-		$this->assertTrue( $this->object->update( $this->order, 'test', 'value' ) );
+		$this->assertEquals( $value, $this->object->update( $this->order, 'test', $value ) );
 	}
 }

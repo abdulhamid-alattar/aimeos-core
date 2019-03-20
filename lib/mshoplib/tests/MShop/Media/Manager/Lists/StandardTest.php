@@ -21,7 +21,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$this->context = \TestHelperMShop::getContext();
 		$this->editor = $this->context->getEditor();
-		$manager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->context, 'Standard' );
+		$manager = \Aimeos\MShop\Media\Manager\Factory::create( $this->context, 'Standard' );
 		$this->object = $manager->getSubManager( 'lists', 'Standard' );
 	}
 
@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
@@ -43,7 +43,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$result = $this->object->getResourceType();
 
 		$this->assertContains( 'media/lists', $result );
-		$this->assertContains( 'media/lists/type', $result );
 	}
 
 
@@ -52,7 +51,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$search = $this->object->createSearch( true );
 		$expr = array(
 			$search->getConditions(),
-			$search->compare( '==', 'media.lists.editor', 'core:unittest' ),
+			$search->compare( '==', 'media.lists.editor', 'core:lib/mshoplib' ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -60,7 +59,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$this->assertEquals( 2, count( $result ) );
 		$this->assertArrayHasKey( 'attribute', $result );
-		$this->assertEquals( 6, $result['attribute'] );
+		$this->assertEquals( 11, $result['attribute'] );
 	}
 
 
@@ -73,7 +72,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$results = $this->object->searchItems( $search );
 
 		if( ( $item = reset( $results ) ) === false ) {
@@ -81,7 +80,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		}
 
 		$this->assertEquals( $item, $this->object->getItem( $item->getId() ) );
-		$this->assertNotEquals( '', $item->getTypeName() );
 	}
 
 
@@ -119,7 +117,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getId(), $itemSaved->getId() );
 		$this->assertEquals( $item->getSiteId(), $itemSaved->getSiteId() );
 		$this->assertEquals( $item->getParentId(), $itemSaved->getParentId() );
-		$this->assertEquals( $item->getTypeId(), $itemSaved->getTypeId() );
+		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getRefId(), $itemSaved->getRefId() );
 		$this->assertEquals( $item->getDomain(), $itemSaved->getDomain() );
 		$this->assertEquals( $item->getDateStart(), $itemSaved->getDateStart() );
@@ -134,7 +132,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getId(), $itemUpd->getId() );
 		$this->assertEquals( $itemExp->getSiteId(), $itemUpd->getSiteId() );
 		$this->assertEquals( $itemExp->getParentId(), $itemUpd->getParentId() );
-		$this->assertEquals( $itemExp->getTypeId(), $itemUpd->getTypeId() );
+		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getRefId(), $itemUpd->getRefId() );
 		$this->assertEquals( $itemExp->getDomain(), $itemUpd->getDomain() );
 		$this->assertEquals( $itemExp->getDateStart(), $itemUpd->getDateStart() );
@@ -153,124 +151,31 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testMoveItemLastToFront()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first media list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last media list item' );
-		}
-
-		$this->object->moveItem( $last->getId(), $first->getId() );
-
-		$newFirst = $this->object->getItem( $last->getId() );
-		$newSecond = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $last->getId() );
-
-		$this->assertEquals( 1, $newFirst->getPosition() );
-		$this->assertEquals( 2, $newSecond->getPosition() );
-	}
-
-
-	public function testMoveItemFirstToLast()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first media list item' );
-		}
-
-		if( ( $second = next( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No second media list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last media list item' );
-		}
-
-		$this->object->moveItem( $first->getId() );
-
-		$newBefore = $this->object->getItem( $last->getId() );
-		$newLast = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $first->getId(), $second->getId() );
-
-		$this->assertEquals( $last->getPosition() - 1, $newBefore->getPosition() );
-		$this->assertEquals( $last->getPosition(), $newLast->getPosition() );
-	}
-
-
-	public function testMoveItemFirstUp()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first media list item' );
-		}
-
-		if( ( $second = next( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No second media list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last media list item' );
-		}
-
-		$this->object->moveItem( $first->getId(), $last->getId() );
-
-		$newLast = $this->object->getItem( $last->getId() );
-		$newUp = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $first->getId(), $second->getId() );
-
-		$this->assertEquals( $last->getPosition() - 1, $newUp->getPosition() );
-		$this->assertEquals( $last->getPosition(), $newLast->getPosition() );
-	}
-
-
 	public function testSearchItems()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 
 		$expr = [];
 		$expr[] = $search->compare( '!=', 'media.lists.id', null );
 		$expr[] = $search->compare( '!=', 'media.lists.siteid', null );
 		$expr[] = $search->compare( '!=', 'media.lists.parentid', null );
 		$expr[] = $search->compare( '==', 'media.lists.domain', 'attribute' );
-		$expr[] = $search->compare( '!=', 'media.lists.typeid', null );
+		$expr[] = $search->compare( '==', 'media.lists.type', 'option' );
 		$expr[] = $search->compare( '!=', 'media.lists.refid', null );
 		$expr[] = $search->compare( '==', 'media.lists.datestart', null );
 		$expr[] = $search->compare( '==', 'media.lists.dateend', null );
 		$expr[] = $search->compare( '!=', 'media.lists.config', null );
-		$expr[] = $search->compare( '==', 'media.lists.position', 0 );
+		$expr[] = $search->compare( '==', 'media.lists.position', 1 );
 		$expr[] = $search->compare( '==', 'media.lists.status', 1 );
 		$expr[] = $search->compare( '>=', 'media.lists.mtime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '>=', 'media.lists.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'media.lists.editor', $this->editor );
 
-		$expr[] = $search->compare( '!=', 'media.lists.type.id', null );
-		$expr[] = $search->compare( '!=', 'media.lists.type.siteid', null );
-		$expr[] = $search->compare( '==', 'media.lists.type.code', 'option' );
-		$expr[] = $search->compare( '==', 'media.lists.type.domain', 'attribute' );
-		$expr[] = $search->compare( '>', 'media.lists.type.label', '' );
-		$expr[] = $search->compare( '==', 'media.lists.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'media.lists.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'media.lists.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'media.lists.type.editor', $this->editor );
-
 		$total = 0;
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$results = $this->object->searchItems( $search, [], $total );
 		$this->assertEquals( 1, count( $results ) );
-		$this->assertEquals( 1, $total );
+		$this->assertEquals( 4, $total );
 	}
 
 
@@ -289,7 +194,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$results = $this->object->searchItems( $search, [], $total );
 
 		$this->assertEquals( 5, count( $results ) );
-		$this->assertEquals( 7, $total );
+		$this->assertEquals( 13, $total );
 
 		foreach( $results as $itemId => $item ) {
 			$this->assertEquals( $itemId, $item->getId() );
@@ -304,33 +209,5 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$this->setExpectedException( \Aimeos\MShop\Exception::class );
 		$this->object->getSubManager( 'unknown' );
-	}
-
-
-	protected function getListItems()
-	{
-		$manager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->context, 'Standard' );
-
-		$search = $manager->createSearch();
-		$search->setConditions( $search->compare( '==', 'media.url', 'prod_266x221/198_prod_266x221.jpg' ) );
-		$search->setSlice( 0, 1 );
-
-		$results = $manager->searchItems( $search );
-
-		if( ( $item = reset( $results ) ) === false ) {
-			throw new \RuntimeException( 'No media item found' );
-		}
-
-		$search = $this->object->createSearch();
-		$expr = array(
-			$search->compare( '==', 'media.lists.parentid', $item->getId() ),
-			$search->compare( '==', 'media.lists.domain', 'attribute' ),
-			$search->compare( '==', 'media.lists.editor', $this->editor ),
-			$search->compare( '==', 'media.lists.type.code', 'option' ),
-		);
-		$search->setConditions( $search->combine( '&&', $expr ) );
-		$search->setSortations( array( $search->sort( '+', 'media.lists.position' ) ) );
-
-		return $this->object->searchItems( $search );
 	}
 }

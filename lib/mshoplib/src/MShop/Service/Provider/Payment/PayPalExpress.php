@@ -212,7 +212,7 @@ class PayPalExpress
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Iface $order Order invoice object
 	 * @param array $params Request parameter if available
-	 * @return \Aimeos\MShop\Common\Item\Helper\Form\Standard Form object with URL, action and parameters to redirect to
+	 * @return \Aimeos\MShop\Common\Helper\Form\Standard Form object with URL, action and parameters to redirect to
 	 * 	(e.g. to an external server of the payment provider or to a local success page)
 	 */
 	public function process( \Aimeos\MShop\Order\Item\Iface $order, array $params = [] )
@@ -239,7 +239,7 @@ class PayPalExpress
 		$this->setAttributes( $serviceItem, ['TOKEN' => $rvals['TOKEN']], 'payment/paypal' );
 		$this->saveOrderBase( $orderBaseItem );
 
-		return new \Aimeos\MShop\Common\Item\Helper\Form\Standard( $paypalUrl, 'POST', [] );
+		return new \Aimeos\MShop\Common\Helper\Form\Standard( $paypalUrl, 'POST', [] );
 	}
 
 
@@ -382,7 +382,8 @@ class PayPalExpress
 	/**
 	 * Updates the order status sent by payment gateway notifications
 	 *
-	 * @param \Psr\Http\Message\ServerRequestInterface Request object
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object
+	 * @param \Psr\Http\Message\ResponseInterface $response Response object
 	 * @return \Psr\Http\Message\ResponseInterface Response object
 	 */
 	public function updatePush( \Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response )
@@ -534,12 +535,12 @@ class PayPalExpress
 	/**
 	 * Checks if IPN message from paypal is valid.
 	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket
-	 * @param array $params
+	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Order base item
+	 * @param array $params List of parameters
 	 */
 	protected function checkIPN( $basket, $params )
 	{
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order/base/service/attribute' );
+		$attrManager = \Aimeos\MShop::create( $this->getContext(), 'order/base/service/attribute' );
 
 		if( $this->getConfigValue( array( 'paypalexpress.AccountEmail' ) ) !== $params['receiver_email'] )
 		{
@@ -564,7 +565,7 @@ class PayPalExpress
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$results = $attrManager->searchItems( $search );
 
-		if( ( $attr = reset( $results ) ) !== false )
+		if( reset( $results ) !== false )
 		{
 			$msg = sprintf( 'PayPal Express: Duplicate transaction with ID "%1$s" and status "%2$s" ', $params['txn_id'], $params['txn_status'] );
 			throw new \Aimeos\MShop\Service\Exception( $msg );
@@ -647,25 +648,20 @@ class PayPalExpress
 		$deliveryCosts = 0;
 		$deliveryPrices = [];
 		$values = $this->getAuthParameter();
+		$addresses = $orderBase->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 
 
-		if( $this->getConfigValue( 'paypalexpress.address', true ) )
+		if( $this->getConfigValue( 'paypalexpress.address', true ) && ( $address = current( $addresses ) ) !== false )
 		{
-			try
-			{
-				$orderAddressDelivery = $orderBase->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
-
-				/* setting up the address details */
-				$values['NOSHIPPING'] = $this->getConfigValue( array( 'paypalexpress.NoShipping' ), 1 );
-				$values['ADDROVERRIDE'] = $this->getConfigValue( array( 'paypalexpress.AddrOverride' ), 0 );
-				$values['PAYMENTREQUEST_0_SHIPTONAME'] = $orderAddressDelivery->getFirstName() . ' ' . $orderAddressDelivery->getLastName();
-				$values['PAYMENTREQUEST_0_SHIPTOSTREET'] = $orderAddressDelivery->getAddress1() . ' ' . $orderAddressDelivery->getAddress2() . ' ' . $orderAddressDelivery->getAddress3();
-				$values['PAYMENTREQUEST_0_SHIPTOCITY'] = $orderAddressDelivery->getCity();
-				$values['PAYMENTREQUEST_0_SHIPTOSTATE'] = $orderAddressDelivery->getState();
-				$values['PAYMENTREQUEST_0_SHIPTOCOUNTRYCODE'] = $orderAddressDelivery->getCountryId();
-				$values['PAYMENTREQUEST_0_SHIPTOZIP'] = $orderAddressDelivery->getPostal();
-			}
-			catch( \Exception $e ) { ; } // If no address is available
+			/* setting up the address details */
+			$values['NOSHIPPING'] = $this->getConfigValue( array( 'paypalexpress.NoShipping' ), 1 );
+			$values['ADDROVERRIDE'] = $this->getConfigValue( array( 'paypalexpress.AddrOverride' ), 0 );
+			$values['PAYMENTREQUEST_0_SHIPTONAME'] = $address->getFirstName() . ' ' . $address->getLastName();
+			$values['PAYMENTREQUEST_0_SHIPTOSTREET'] = $address->getAddress1() . ' ' . $address->getAddress2() . ' ' . $address->getAddress3();
+			$values['PAYMENTREQUEST_0_SHIPTOCITY'] = $address->getCity();
+			$values['PAYMENTREQUEST_0_SHIPTOSTATE'] = $address->getState();
+			$values['PAYMENTREQUEST_0_SHIPTOCOUNTRYCODE'] = $address->getCountryId();
+			$values['PAYMENTREQUEST_0_SHIPTOZIP'] = $address->getPostal();
 		}
 
 
@@ -765,7 +761,7 @@ class PayPalExpress
 	/**
 	 * Returns order service item for specified base ID.
 	 *
-	 * @param integer $baseid Base ID of the order
+	 * @param string $baseid Base ID of the order
 	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item
 	 */
 	protected function getOrderServiceItem( $baseid )
@@ -791,7 +787,7 @@ class PayPalExpress
 
 		if( !isset( $prices[$taxrate] ) )
 		{
-			$prices[$taxrate] = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' )->createItem();
+			$prices[$taxrate] = \Aimeos\MShop::create( $this->getContext(), 'price' )->createItem();
 			$prices[$taxrate]->setTaxRate( $taxrate );
 		}
 
@@ -811,8 +807,6 @@ class PayPalExpress
 	 */
 	public function send( $target, $method, $payload )
 	{
-		$response = '';
-
 		if( ( $curl = curl_init() )=== false ) {
 			throw new \Aimeos\MShop\Service\Exception( 'Could not initialize curl' );
 		}

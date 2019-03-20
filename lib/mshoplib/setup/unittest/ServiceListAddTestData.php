@@ -22,18 +22,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'MediaAddTestData', 'PriceAddTestData', 'ServiceAddTestData', 'TextAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['ServiceAddTestData', 'MediaAddTestData', 'PriceAddTestData', 'TextAddTestData'];
 	}
 
 
@@ -45,7 +34,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding service-list test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'service-list.php';
@@ -78,7 +67,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getPriceData( array $keys )
 	{
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$priceManager = \Aimeos\MShop\Price\Manager\Factory::create( $this->additional, 'Standard' );
 		$priceTypeManager = $priceManager->getSubManager( 'type', 'Standard' );
 
 		$value = $ship = $domain = $code = [];
@@ -105,16 +94,16 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 
 		$result = $priceTypeManager->searchItems( $search );
 
-		$typeids = [];
+		$typeCodes = [];
 		foreach( $result as $item ) {
-			$typeids[] = $item->getId();
+			$typeCodes[] = $item->getCode();
 		}
 
 		$search = $priceManager->createSearch();
 		$expr = array(
 			$search->compare( '==', 'price.value', $value ),
 			$search->compare( '==', 'price.costs', $ship ),
-			$search->compare( '==', 'price.typeid', $typeids ),
+			$search->compare( '==', 'price.type', $typeCodes ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -138,7 +127,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getTextData( array $keys )
 	{
-		$textManager = \Aimeos\MShop\Text\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$textManager = \Aimeos\MShop\Text\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$labels = [];
 		foreach( $keys as $dataset )
@@ -171,7 +160,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function getMediaData( array $keys )
 	{
-		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$labels = [];
 		foreach( $keys as $dataset )
@@ -204,7 +193,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function addServiceListData( array $testdata, array $refIds )
 	{
-		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::create( $this->additional, 'Standard' );
 		$serviceListManager = $serviceManager->getSubManager( 'lists', 'Standard' );
 
 		$typeDomain = $typeCode = $itemCode = [];
@@ -224,9 +213,8 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 
 		$serviceManager->begin();
 
-		$typeids = $this->getServiceTypeIds( $typeDomain, $typeCode );
-		$listItemTypeIds = $this->getServiceListTypeIds( $testdata['service/lists/type'] );
-		$parentIds = $this->getServiceIds( $itemCode, $typeids );
+		$this->addServiceListTypeItems( $testdata['service/lists/type'] );
+		$parentIds = $this->getServiceIds( $itemCode, $typeCode );
 
 		$listItem = $serviceListManager->createItem();
 		foreach( $testdata['service/lists'] as $dataset )
@@ -235,18 +223,14 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No service ID found for "%1$s"', $dataset['parentid'] ) );
 			}
 
-			if( !isset( $listItemTypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No service list type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			if( !isset( $refIds[$dataset['domain']][$dataset['refid']] ) ) {
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No "%1$s" ref ID found for "%2$s"', $dataset['refid'], $dataset['domain'] ) );
 			}
 
 			$listItem->setId( null );
 			$listItem->setParentId( $parentIds[$dataset['parentid']] );
-			$listItem->setTypeId( $listItemTypeIds[$dataset['typeid']] );
 			$listItem->setRefId( $refIds[$dataset['domain']] [$dataset['refid']] );
+			$listItem->setType( $dataset['type'] );
 			$listItem->setDomain( $dataset['domain'] );
 			$listItem->setDateStart( $dataset['start'] );
 			$listItem->setDateEnd( $dataset['end'] );
@@ -262,18 +246,16 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 
 
 	/**
-	 * Returns the service list type IDs for the given data sets
+	 * Adds the service list type items
 	 *
 	 * @param array $data Associative list of identifiers as keys and data sets as values
-	 * @return array Associative list of identifiers as keys and list type IDs as values
 	 */
-	protected function getServiceListTypeIds( array $data )
+	protected function addServiceListTypeItems( array $data )
 	{
-		$manager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$manager = \Aimeos\MShop\Service\Manager\Factory::create( $this->additional, 'Standard' );
 		$listManager = $manager->getSubManager( 'lists', 'Standard' );
 		$listTypeManager = $listManager->getSubManager( 'type', 'Standard' );
 
-		$listItemTypeIds = [];
 		$listItemType = $listTypeManager->createItem();
 
 		foreach( $data as $key => $dataset )
@@ -285,10 +267,7 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$listItemType->setStatus( $dataset['status'] );
 
 			$listTypeManager->saveItem( $listItemType );
-			$listItemTypeIds[$key] = $listItemType->getId();
 		}
-
-		return $listItemTypeIds;
 	}
 
 
@@ -296,17 +275,17 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 * Returns the service IDs for the given data
 	 *
 	 * @param array $codes Service codes
-	 * @param array $typeIds List of price type IDs
-	 * @param array Associative list of identifiers as keys and service IDs as values
+	 * @param array $typeCodes List of price type codes
+	 * @return array Associative list of identifiers as keys and service IDs as values
 	 */
-	protected function getServiceIds( array $codes, array $typeIds )
+	protected function getServiceIds( array $codes, array $typeCodes )
 	{
-		$manager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$manager = \Aimeos\MShop\Service\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$search = $manager->createSearch();
 		$expr = array(
 			$search->compare( '==', 'service.code', $codes ),
-			$search->compare( '==', 'service.typeid', $typeIds ),
+			$search->compare( '==', 'service.type', $typeCodes ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -316,33 +295,5 @@ class ServiceListAddTestData extends \Aimeos\MW\Setup\Task\Base
 		}
 
 		return $parentIds;
-	}
-
-
-	/**
-	 * Returns the service type IDs for the given domains and codes
-	 *
-	 * @param array $domain Domain the service type is for
-	 * @param array $code Code the service type is for
-	 * @return array List of service type IDs
-	 */
-	protected function getServiceTypeIds( array $domain, array $code )
-	{
-		$manager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
-		$typeManager = $manager->getSubManager( 'type', 'Standard' );
-
-		$search = $typeManager->createSearch();
-		$expr = array(
-			$search->compare( '==', 'service.type.domain', $domain ),
-			$search->compare( '==', 'service.type.code', $code ),
-		);
-		$search->setConditions( $search->combine( '&&', $expr ) );
-
-		$typeids = [];
-		foreach( $typeManager->searchItems( $search ) as $item ) {
-			$typeids[] = $item->getId();
-		}
-
-		return $typeids;
 	}
 }

@@ -54,7 +54,7 @@ class MShopAddAttributeData extends MShopAddDataAbstract
 			throw new \Aimeos\MShop\Exception( sprintf( 'No file "%1$s" found for default codes', $path ) );
 		}
 
-		$manager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
+		$manager = \Aimeos\MShop::create( $this->additional, 'attribute' );
 		$item = $manager->createItem();
 		$num = $total = 0;
 
@@ -63,9 +63,7 @@ class MShopAddAttributeData extends MShopAddDataAbstract
 			try
 			{
 				$total++;
-				$item->setId( null )->fromArray( $dataset );
-				$item->setTypeId( $this->getTypeId( 'attribute/type', $dataset['attribute.domain'], $dataset['attribute.type'] ) );
-
+				$item = $item->setId( null )->fromArray( $dataset )->setType( $dataset['attribute.type'] );
 				$manager->saveItem( $item );
 				$num++;
 			}

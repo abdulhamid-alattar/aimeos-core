@@ -31,7 +31,7 @@ class Factory
 	 * @throws \Aimeos\MShop\Attribute\Exception|\Aimeos\MShop\Exception If requested manager
 	 * implementation couldn't be found or initialisation fails
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/attribute/manager/name
 		 * Class name of the used attribute manager implementation
@@ -79,7 +79,7 @@ class Factory
 		$iface = \Aimeos\MShop\Attribute\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Attribute\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/attribute/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the attribute manager
@@ -159,4 +159,3 @@ class Factory
 	}
 
 }
-

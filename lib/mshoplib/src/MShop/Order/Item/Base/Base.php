@@ -57,8 +57,8 @@ abstract class Base
 	protected $bdata;
 	protected $coupons;
 	protected $products;
-	protected $addresses;
 	protected $services = [];
+	protected $addresses = [];
 	protected $modified = false;
 
 
@@ -77,8 +77,8 @@ abstract class Base
 			array $values = [], array $products = [], array $addresses = [],
 			array $services = [], array $coupons = [] )
 	{
-		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $products );
 		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Order\Item\Base\Address\Iface::class, $addresses );
+		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $products );
 		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Order\Item\Base\Service\Iface::class, $services );
 
 		foreach( $coupons as $couponProducts ) {
@@ -88,7 +88,10 @@ abstract class Base
 		$this->bdata = $values;
 		$this->coupons = $coupons;
 		$this->products = $products;
-		$this->addresses = $addresses;
+
+		foreach( $addresses as $address ) {
+			$this->addresses[$address->getType()][] = $address;
+		}
 
 		foreach( $services as $service ) {
 			$this->services[$service->getType()][$service->getServiceId()] = $service;
@@ -101,21 +104,6 @@ abstract class Base
 	 */
 	public function __clone()
 	{
-		foreach( $this->products as $key => $value ) {
-			$this->products[$key] = $value;
-		}
-
-		foreach( $this->addresses as $key => $value ) {
-			$this->addresses[$key] = $value;
-		}
-
-		foreach( $this->services as $key => $value ) {
-			$this->services[$key] = $value;
-		}
-
-		foreach( $this->coupons as $key => $value ) {
-			$this->coupons[$key] = $value;
-		}
 	}
 
 
@@ -160,7 +148,7 @@ abstract class Base
 		 * Workaround because database connections can't be serialized
 		 * Listeners will be reattached on wakeup by the order base manager
 		 */
-		$this->clearListeners();
+		$this->off();
 
 		return array_keys( get_object_vars( $this ) );
 	}
@@ -174,427 +162,6 @@ abstract class Base
 	public function getResourceType()
 	{
 		return 'order/base';
-	}
-
-
-	/**
-	 * Returns the product items that are or should be part of an (future) order.
-	 *
-	 * @return array Array of order product items implementing \Aimeos\MShop\Order\Item\Base\Product\Iface
-	 */
-	public function getProducts()
-	{
-		return $this->products;
-	}
-
-
-	/**
-	 * Returns the product item of an (future) order specified by its key.
-	 *
-	 * @param integer $key Key returned by getProducts() identifying the requested product
-	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Product item of an order
-	 */
-	public function getProduct( $key )
-	{
-		if( !isset( $this->products[$key] ) ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Product not available' ) );
-		}
-
-		return $this->products[$key];
-	}
-
-
-	/**
-	 * Adds an order product item to the (future) order.
-	 * If a similar item is found, only the quantity is increased.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $item Order product item to be added
-	 * @param integer|null $position position of the new order product item
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function addProduct( \Aimeos\MShop\Order\Item\Base\Product\Iface $item, $position = null )
-	{
-		$this->checkProduct( $item );
-		$this->checkPrice( $item->getPrice() );
-
-		$this->notifyListeners( 'addProduct.before', $item );
-
-		if( ( $pos = $this->getSameProduct( $item, $this->products ) ) !== false )
-		{
-			$quantity = $item->getQuantity();
-			$item = $this->products[$pos];
-			$item->setQuantity( $item->getQuantity() + $quantity );
-		}
-		else if( $position !== null )
-		{
-			if( isset( $this->products[$position] ) )
-			{
-				$products = [];
-
-				foreach( $this->products as $key => $product )
-				{
-					if( $key < $position ) {
-						$products[$key] = $product;
-					} else if( $key >= $position ) {
-						$products[$key + 1] = $product;
-					}
-				}
-
-				$products[$position] = $item;
-				$this->products = $products;
-			}
-			else
-			{
-				$this->products[$position] = $item;
-			}
-		}
-		else
-		{
-			$this->products[] = $item;
-		}
-
-		ksort( $this->products );
-		$this->setModified();
-
-		$this->notifyListeners( 'addProduct.after', $item );
-
-		return $this;
-	}
-
-
-	/**
-	 * Sets a modified order product item to the (future) order.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $item Order product item to be added
-	 * @param integer $pos Position id of the order product item
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function editProduct( \Aimeos\MShop\Order\Item\Base\Product\Iface $item, $pos )
-	{
-		if( !array_key_exists( $pos, $this->products ) ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Product  not available' ) );
-		}
-
-		$this->notifyListeners( 'editProduct.before', $item );
-
-		if( ( $pos = $this->getSameProduct( $item, $this->products ) ) !== false )
-		{
-			$this->products[$pos] = $item;
-			$this->setModified();
-		}
-		else
-		{
-			$this->products[$pos] = $item;
-		}
-
-		$this->notifyListeners( 'editProduct.after', $item );
-
-		return $this;
-	}
-
-
-	/**
-	 * Deletes an order product item from the (future) order.
-	 *
-	 * @param integer $position Position id of the order product item
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function deleteProduct( $position )
-	{
-		if( !array_key_exists( $position, $this->products ) ) {
-			return;
-		}
-
-		$product = $this->products[$position];
-
-		$this->notifyListeners( 'deleteProduct.before', $product );
-
-		unset( $this->products[$position] );
-		$this->setModified();
-
-		$this->notifyListeners( 'deleteProduct.after', $product );
-
-		return $this;
-	}
-
-
-	/**
-	 * Returns all addresses that are part of the basket.
-	 *
-	 * @return array Associative list of address items implementing
-	 *  \Aimeos\MShop\Order\Item\Base\Address\Iface with "billing" or "delivery" as key
-	 */
-	public function getAddresses()
-	{
-		return $this->addresses;
-	}
-
-
-	/**
-	 * Returns the billing or delivery address depending on the given type.
-	 *
-	 * @param string $type Address type, usually "billing" or "delivery"
-	 * @return \Aimeos\MShop\Order\Item\Base\Address\Iface Order address item for the requested type
-	 */
-	public function getAddress( $type = \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT )
-	{
-		if( !isset( $this->addresses[$type] ) ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Address not available' ) );
-		}
-
-		return $this->addresses[$type];
-	}
-
-
-	/**
-	 * Sets a customer address as billing or delivery address for an order.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Address\Iface $address Order address item for the given type
-	 * @param string $type Address type, usually "billing" or "delivery"
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function setAddress( \Aimeos\MShop\Order\Item\Base\Address\Iface $address, $type )
-	{
-		if( isset( $this->addresses[$type] ) && $this->addresses[$type] === $address ) { return; }
-
-		$this->notifyListeners( 'setAddress.before', $address );
-
-		$address = clone $address;
-		$address->setType( $type ); // enforce that the type is the same as the given one
-		$address->setId( null ); // enforce saving as new item
-
-		$this->addresses[$type] = $address;
-		$this->setModified();
-
-		$this->notifyListeners( 'setAddress.after', $address );
-
-		return $this;
-	}
-
-
-	/**
-	 * Deleted a customer address for billing or delivery of an order.
-	 *
-	 * @param string $type Address type defined in \Aimeos\MShop\Order\Item\Base\Address\Base
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function deleteAddress( $type )
-	{
-		if( !isset( $this->addresses[$type] ) ) {
-			return;
-		}
-
-		$this->notifyListeners( 'deleteAddress.before', $type );
-
-		$address = $this->addresses[$type];
-		unset( $this->addresses[$type] );
-		$this->setModified();
-
-		$this->notifyListeners( 'deleteAddress.after', $address );
-
-		return $this;
-	}
-
-
-	/**
-	 * Returns all services that are part of the basket.
-	 *
-	 * @return array Associative list of service types ("delivery" or "payment") as keys and list of
-	 *	service items implementing \Aimeos\MShop\Order\Service\Iface as values
-	 */
-	public function getServices()
-	{
-		return $this->services;
-	}
-
-
-	/**
-	 * Returns the delivery or payment services depending on the given type.
-	 *
-	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
-	 * @param string|null $code Code of the service item that should be returned
-	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface|\Aimeos\MShop\Order\Item\Base\Service\Iface[]
-	 * 	Order service item or list of items for the requested type
-	 * @throws \Aimeos\MShop\Order\Exception If no service for the given type and code is found
-	 */
-	public function getService( $type, $code = null )
-	{
-		if( $code !== null )
-		{
-			if( isset( $this->services[$type] ) )
-			{
-				foreach( $this->services[$type] as $service )
-				{
-					if( $service->getCode() === $code ) {
-						return $service;
-					}
-				}
-			}
-
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Service not available' ) );
-		}
-
-		return ( isset( $this->services[$type] ) ? $this->services[$type] : [] );
-	}
-
-
-	/**
-	 * Adds an order service item as delivery or payment service to the basket
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $service Order service item for the given domain
-	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function addService( \Aimeos\MShop\Order\Item\Base\Service\Iface $service, $type )
-	{
-		$this->checkPrice( $service->getPrice() );
-
-		$this->notifyListeners( 'addService.before', $service );
-
-		$service = clone $service;
-		$service->setType( $type ); // enforce that the type is the same as the given one
-		$service->setId( null ); // enforce saving as new item
-
-		$this->services[$type][$service->getServiceId()] = $service;
-		$this->setModified();
-
-		$this->notifyListeners( 'addService.after', $service );
-
-		return $this;
-	}
-
-
-	/**
-	 * Deletes the delivery or payment service from the basket.
-	 *
-	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function deleteService( $type )
-	{
-		if( !isset( $this->services[$type] ) ) {
-			return;
-		}
-
-		$this->notifyListeners( 'deleteService.before', $type );
-
-		$service = $this->services[$type];
-		$this->services[$type] = [];
-		$this->setModified();
-
-		$this->notifyListeners( 'deleteService.after', $service );
-
-		return $this;
-	}
-
-
-	/**
-	 * Returns the available coupon codes and the lists of affected product items.
-	 *
-	 * @return array Associative array of codes and lists of product items
-	 *  implementing \Aimeos\MShop\Order\Product\Iface
-	 */
-	public function getCoupons()
-	{
-		return $this->coupons;
-	}
-
-
-	/**
-	 * Adds a coupon code entered by the customer and the given product item to the basket.
-	 *
-	 * @param string $code Coupon code
-	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $products List of coupon products
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 */
-	public function addCoupon( $code, array $products = [] )
-	{
-		if( isset( $this->coupons[$code] ) ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Duplicate coupon code' ) );
-		}
-
-		foreach( $products as $product )
-		{
-			$this->checkProduct( $product );
-			$this->checkPrice( $product->getPrice() );
-		}
-
-		$this->notifyListeners( 'addCoupon.before', $products );
-
-		$this->coupons[$code] = $products;
-
-		foreach( $products as $product ) {
-			$this->products[] = $product;
-		}
-
-		$this->setModified();
-
-		$this->notifyListeners( 'addCoupon.after', $code );
-
-		return $this;
-	}
-
-
-	/**
-	 * Removes a coupon and the related product items from the basket.
-	 *
-	 * @param string $code Coupon code
-	 * @param boolean $removecode If the coupon code should also be removed
-	 * @return array List of affected product items implementing \Aimeos\MShop\Order\Item\Base\Product\Iface
-	 *  or an empty list if no products are affected by a coupon
-	 */
-	public function deleteCoupon( $code, $removecode = false )
-	{
-		$products = [];
-
-		if( isset( $this->coupons[$code] ) )
-		{
-			$this->notifyListeners( 'deleteCoupon.before', $code );
-
-			$products = $this->coupons[$code];
-
-			foreach( $products as $product )
-			{
-				if( ( $key = array_search( $product, $this->products, true ) ) !== false ) {
-					unset( $this->products[$key] );
-				}
-			}
-
-			if( $removecode === true ) {
-				unset( $this->coupons[$code] );
-			} else {
-				$this->coupons[$code] = [];
-			}
-
-			$this->setModified();
-
-			$this->notifyListeners( 'deleteCoupon.after', $code );
-		}
-
-		return $products;
-	}
-
-
-	/**
-	 * Tests if all necessary items are available to create the order.
-	 *
-	 * @param integer $what Test for the specific type of completeness
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
-	 * @throws \Aimeos\MShop\Order\Exception if there are no products in the basket
-	 */
-	public function check( $what = self::PARTS_ALL )
-	{
-		$this->checkParts( $what );
-
-		$this->notifyListeners( 'check.before', $what );
-
-		if( ( $what & self::PARTS_PRODUCT ) && ( count( $this->products ) < 1 ) ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Basket empty' ) );
-		}
-
-		$this->notifyListeners( 'check.after', $what );
-
-		return $this;
 	}
 
 
@@ -622,18 +189,490 @@ abstract class Base
 
 
 	/**
-	 * Checks the constants for the different parts of the basket.
+	 * Adds the address of the given type to the basket
 	 *
-	 * @param integer $value Part constant
-	 * @throws \Aimeos\MShop\Order\Exception If parts constant is invalid
+	 * @param \Aimeos\MShop\Order\Item\Base\Address\Iface $address Order address item for the given type
+	 * @param string $type Address type, usually "billing" or "delivery"
+	 * @param integer|null $position Position of the address in the list
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
 	 */
-	protected function checkParts( $value )
+	public function addAddress( \Aimeos\MShop\Order\Item\Base\Address\Iface $address, $type, $position = null )
 	{
-		$value = (int) $value;
+		$address = $this->notify( 'addAddress.before', $address );
 
-		if( $value < self::PARTS_NONE || $value > self::PARTS_ALL ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Flags not within allowed range' ) );
+		$address = clone $address;
+		$address = $address->setType( $type )->setId( null ); // enforce saving as new item
+
+		if( $position !== null ) {
+			$this->addresses[$type][$position] = $address;
+		} else {
+			$this->addresses[$type][] = $address;
 		}
+
+		$this->setModified();
+
+		$this->notify( 'addAddress.after', $address );
+
+		return $this;
+	}
+
+
+	/**
+	 * Deletes an order address from the basket
+	 *
+	 * @param string $type Address type defined in \Aimeos\MShop\Order\Item\Base\Address\Base
+	 * @param integer|null $position Position of the address in the list
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function deleteAddress( $type, $position = null )
+	{
+		if( $position === null && isset( $this->addresses[$type] ) || isset( $this->addresses[$type][$position] ) )
+		{
+			$old = ( isset( $this->addresses[$type][$position] ) ? $this->addresses[$type][$position] : $this->addresses[$type] );
+			$old = $this->notify( 'deleteAddress.before', $old );
+
+			if( $position !== null ) {
+				unset( $this->addresses[$type][$position] );
+			} else {
+				unset( $this->addresses[$type] );
+			}
+
+			$this->setModified();
+
+			$this->notify( 'deleteAddress.after', $old );
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Returns the order address depending on the given type
+	 *
+	 * @param string $type Address type, usually "billing" or "delivery"
+	 * @param integer|null $position Address position in list of addresses
+	 * @return \Aimeos\MShop\Order\Item\Base\Address\Iface[]|\Aimeos\MShop\Order\Item\Base\Address\Iface Order address item or list of
+	 */
+	public function getAddress( $type, $position = null )
+	{
+		if( $position !== null )
+		{
+			if( isset( $this->addresses[$type][$position] ) ) {
+				return $this->addresses[$type][$position];
+			}
+
+			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Address not available' ) );
+		}
+
+		return ( isset( $this->addresses[$type] ) ? $this->addresses[$type] : [] );
+	}
+
+
+	/**
+	 * Returns all addresses that are part of the basket
+	 *
+	 * @return array Associative list of address items implementing
+	 *  \Aimeos\MShop\Order\Item\Base\Address\Iface with "billing" or "delivery" as key
+	 */
+	public function getAddresses()
+	{
+		return $this->addresses;
+	}
+
+
+	/**
+	 * Replaces all addresses in the current basket with the new ones
+	 *
+	 * @param array $map Associative list of order addresses as returned by getAddresses()
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function setAddresses( array $map )
+	{
+		$map = $this->notify( 'setAddresses.before', $map );
+
+		foreach( $map as $type => $items ) {
+			$this->checkAddresses( $items, $type );
+		}
+
+		$old = $this->addresses;
+		$this->addresses = $map;
+		$this->setModified();
+
+		$this->notify( 'setAddresses.after', $old );
+
+		return $this;
+	}
+
+
+	/**
+	 * Adds a coupon code and the given product item to the basket
+	 *
+	 * @param string $code Coupon code
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function addCoupon( $code )
+	{
+		if( !isset( $this->coupons[$code] ) )
+		{
+			$code = $this->notify( 'addCoupon.before', $code );
+
+			$this->coupons[$code] = [];
+			$this->setModified();
+
+			$this->notify( 'addCoupon.after', $code );
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Removes a coupon and the related product items from the basket
+	 *
+	 * @param string $code Coupon code
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function deleteCoupon( $code )
+	{
+		if( isset( $this->coupons[$code] ) )
+		{
+			$old = [$code => $this->coupons[$code]];
+			$old = $this->notify( 'deleteCoupon.before', $old );
+
+			foreach( $this->coupons[$code] as $product )
+			{
+				if( ( $key = array_search( $product, $this->products, true ) ) !== false ) {
+					unset( $this->products[$key] );
+				}
+			}
+
+			unset( $this->coupons[$code] );
+			$this->setModified();
+
+			$this->notify( 'deleteCoupon.after', $old );
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Returns the available coupon codes and the lists of affected product items
+	 *
+	 * @return array Associative array of codes and lists of product items
+	 *  implementing \Aimeos\MShop\Order\Product\Iface
+	 */
+	public function getCoupons()
+	{
+		return $this->coupons;
+	}
+
+
+	/**
+	 * Sets a coupon code and the given product items in the basket.
+	 *
+	 * @param string $code Coupon code
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $products List of coupon products
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function setCoupon( $code, array $products = [] )
+	{
+		$new = $this->notify( 'setCoupon.before', [$code => $products] );
+
+		$products = $this->checkProducts( current( $new ) );
+		$code = key( $new );
+
+		if( isset( $this->coupons[$code] ) )
+		{
+			foreach( $this->coupons[$code] as $product )
+			{
+				if( ( $key = array_search( $product, $this->products, true ) ) !== false ) {
+					unset( $this->products[$key] );
+				}
+			}
+		}
+
+		foreach( $products as $product ) {
+			$this->products[] = $product;
+		}
+
+		$old = isset( $this->coupons[$code] ) ? [$code => $this->coupons[$code]] : [];
+		$this->coupons[$code] = $products;
+		$this->setModified();
+
+		$this->notify( 'setCoupon.after', $old );
+
+		return $this;
+	}
+
+
+	/**
+	 * Replaces all coupons in the current basket with the new ones
+	 *
+	 * @param array $map Associative list of order coupons as returned by getCoupons()
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function setCoupons( array $map )
+	{
+		$map = $this->notify( 'setCoupons.before', $map );
+
+		foreach( $map as $code => $products ) {
+			$map[$code] = $this->checkProducts( $products );
+		}
+
+		foreach( $this->coupons as $code => $products )
+		{
+			foreach( $products as $product )
+			{
+				if( ( $key = array_search( $product, $this->products, true ) ) !== false ) {
+					unset( $this->products[$key] );
+				}
+			}
+		}
+
+		foreach( $map as $code => $products )
+		{
+			foreach( $products as $product ) {
+				$this->products[] = $product;
+			}
+		}
+
+		$old = $this->coupons;
+		$this->coupons = $map;
+		$this->setModified();
+
+		$this->notify( 'setCoupons.after', $old );
+
+		return $this;
+	}
+
+
+	/**
+	 * Adds an order product item to the basket
+	 * If a similar item is found, only the quantity is increased.
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $item Order product item to be added
+	 * @param integer|null $position position of the new order product item
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function addProduct( \Aimeos\MShop\Order\Item\Base\Product\Iface $item, $position = null )
+	{
+		$item = $this->notify( 'addProduct.before', $item );
+
+		$this->checkProducts( [$item] );
+
+		if( $position !== null ) {
+			$this->products[$position] = $item;
+		} elseif( ( $pos = $this->getSameProduct( $item, $this->products ) ) !== false ) {
+			$this->products[$pos]->setQuantity( $this->products[$pos]->getQuantity() + $item->getQuantity() );
+		} else {
+			$this->products[] = $item;
+		}
+
+		ksort( $this->products );
+		$this->setModified();
+
+		$this->notify( 'addProduct.after', $item );
+
+		return $this;
+	}
+
+
+	/**
+	 * Deletes an order product item from the basket
+	 *
+	 * @param integer $position Position of the order product item
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function deleteProduct( $position )
+	{
+		if( isset( $this->products[$position] ) )
+		{
+			$old = $this->products[$position];
+			$old = $this->notify( 'deleteProduct.before', $old );
+
+			unset( $this->products[$position] );
+			$this->setModified();
+
+			$this->notify( 'deleteProduct.after', $old );
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Returns the product item of an basket specified by its key
+	 *
+	 * @param integer $key Key returned by getProducts() identifying the requested product
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Product item of an order
+	 */
+	public function getProduct( $key )
+	{
+		if( !isset( $this->products[$key] ) ) {
+			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Product not available' ) );
+		}
+
+		return $this->products[$key];
+	}
+
+
+	/**
+	 * Returns the product items that are or should be part of a basket
+	 *
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface[] List of order product items
+	 */
+	public function getProducts()
+	{
+		return $this->products;
+	}
+
+
+	/**
+	 * Replaces all products in the current basket with the new ones
+	 *
+	 * @param array $map Associative list of ordered products as returned by getProducts()
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function setProducts( array $map )
+	{
+		$map = $this->notify( 'setProducts.before', $map );
+
+		$this->checkProducts( $map );
+
+		$old = $this->products;
+		$this->products = $map;
+		$this->setModified();
+
+		$this->notify( 'setProducts.after', $old );
+
+		return $this;
+	}
+
+
+	/**
+	 * Adds an order service to the basket
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $service Order service item for the given domain
+	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
+	 * @param integer|null $position Position of the address in the list to overwrite
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function addService( \Aimeos\MShop\Order\Item\Base\Service\Iface $service, $type, $position = null )
+	{
+		$service = $this->notify( 'addService.before', $service );
+
+		$this->checkPrice( $service->getPrice() );
+
+		$service = clone $service;
+		$service = $service->setType( $type )->setId( null ); // enforce saving as new item
+
+		if( $position !== null ) {
+			$this->services[$type][$position] = $service;
+		} else {
+			$this->services[$type][] = $service;
+		}
+
+		$this->setModified();
+
+		$this->notify( 'addService.after', $service );
+
+		return $this;
+	}
+
+
+	/**
+	 * Deletes an order service from the basket
+	 *
+	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
+	 * @param integer|null $position Position of the address in the list to overwrite
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function deleteService( $type, $position = null )
+	{
+		if( $position === null && isset( $this->services[$type] ) || isset( $this->services[$type][$position] ) )
+		{
+			$old = ( isset( $this->services[$type][$position] ) ? $this->services[$type][$position] : $this->services[$type] );
+			$old = $this->notify( 'deleteService.before', $old );
+
+			if( $position !== null ) {
+				unset( $this->services[$type][$position] );
+			} else {
+				unset( $this->services[$type] );
+			}
+
+			$this->setModified();
+
+			$this->notify( 'deleteService.after', $old );
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Returns the order services depending on the given type
+	 *
+	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Service\Base
+	 * @param string|null $code Code of the service item that should be returned
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface[]|\Aimeos\MShop\Order\Item\Base\Service\Iface
+	 * 	Order service item or list of items for the requested type
+	 * @throws \Aimeos\MShop\Order\Exception If no service for the given type and code is found
+	 */
+	public function getService( $type, $code = null )
+	{
+		if( $code !== null )
+		{
+			if( isset( $this->services[$type] ) )
+			{
+				foreach( $this->services[$type] as $service )
+				{
+					if( $service->getCode() === $code ) {
+						return $service;
+					}
+				}
+			}
+
+			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Service not available' ) );
+		}
+
+		return ( isset( $this->services[$type] ) ? $this->services[$type] : [] );
+	}
+
+
+	/**
+	 * Returns all services that are part of the basket
+	 *
+	 * @return array Associative list of service types ("delivery" or "payment") as keys and list of
+	 *	service items implementing \Aimeos\MShop\Order\Service\Iface as values
+	 */
+	public function getServices()
+	{
+		return $this->services;
+	}
+
+
+	/**
+	 * Replaces all services in the current basket with the new ones
+	 *
+	 * @param array $map Associative list of order services as returned by getServices()
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base item for method chaining
+	 */
+	public function setServices( array $map )
+	{
+		$map = $this->notify( 'setServices.before', $map );
+
+		foreach( $map as $type => $services ) {
+			$map[$type] = $this->checkServices( $services, $type );
+		}
+
+		$old = $this->services;
+		$this->services = $map;
+		$this->setModified();
+
+		$this->notify( 'setServices.after', $old );
+
+		return $this;
 	}
 
 
@@ -647,16 +686,71 @@ abstract class Base
 
 
 	/**
-	 * Checks if a order product contains all required values.
+	 * Checks if all order addresses are valid
 	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $item Order product item
-	 * @throws \Aimeos\MShop\Exception if the price item or product code is missing
+	 * @param \Aimeos\MShop\Order\Item\Base\Address\Iface[] $items Order address items
+	 * @param string $type Address type constant from \Aimeos\MShop\Order\Item\Base\Address\Base
+	 * @return \Aimeos\MShop\Order\Item\Base\Address\Iface[] List of checked items
+	 * @throws \Aimeos\MShop\Exception If one of the order addresses is invalid
 	 */
-	protected function checkProduct( \Aimeos\MShop\Order\Item\Base\Product\Iface $item )
+	protected function checkAddresses( array $items, $type )
 	{
-		if( $item->getProductCode() === '' ) {
-			throw new \Aimeos\MShop\Order\Exception( sprintf( 'Product does not contain all required values. Product code for item not available.' ) );
+		foreach( $items as $key => $item )
+		{
+			\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Address\Iface::class, $item );
+			$items[$key] = $item->setType( $type )->setId( null ); // enforce that the type and saving as new item
 		}
+
+		return $items;
+	}
+
+
+	/**
+	 * Checks if all order products are valid
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $items Order product items
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface[] List of checked items
+	 * @throws \Aimeos\MShop\Exception If one of the order products is invalid
+	 */
+	protected function checkProducts( array $items )
+	{
+		foreach( $items as $key => $item )
+		{
+			\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $item );
+
+			if( $item->getProductCode() === '' ) {
+				throw new \Aimeos\MShop\Order\Exception( sprintf( 'Product does not contain the SKU code' ) );
+			}
+
+			$this->checkPrice( $item->getPrice() );
+			$items[$key] = $item->setId( null ); // enforce saving as new item
+		}
+
+		return $items;
+	}
+
+
+	/**
+	 * Checks if all order services are valid
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface[] $items Order service items
+	 * @param string $type Service type constant from \Aimeos\MShop\Order\Item\Base\Service\Base
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface[] List of checked items
+	 * @throws \Aimeos\MShop\Exception If one of the order services is invalid
+	 */
+	protected function checkServices( array $items, $type )
+	{
+		$list = [];
+
+		foreach( $items as $key => $item )
+		{
+			\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Service\Iface::class, $item );
+
+			$this->checkPrice( $item->getPrice() );
+			$list[$key] = $item->setType( $type )->setId( null ); // enforce the type and saving as new item
+		}
+
+		return $list;
 	}
 
 

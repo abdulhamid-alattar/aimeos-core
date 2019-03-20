@@ -14,14 +14,15 @@ class VoucherTest extends \PHPUnit\Framework\TestCase
 	private $context;
 	private $couponItem;
 	private $orderBase;
+	private $object;
 
 
 	protected function setUp()
 	{
 		$this->context = \TestHelperMShop::getContext();
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $this->context );
+		$priceManager = \Aimeos\MShop\Price\Manager\Factory::create( $this->context );
 
-		$this->couponItem = \Aimeos\MShop\Coupon\Manager\Factory::createManager( $this->context )->createItem();
+		$this->couponItem = \Aimeos\MShop\Coupon\Manager\Factory::create( $this->context )->createItem();
 		$this->couponItem->setConfig( array( 'voucher.productcode' => 'U:MD' ) );
 
 		// Don't create order base item by createItem() as this would already register the plugins
@@ -33,15 +34,15 @@ class VoucherTest extends \PHPUnit\Framework\TestCase
 
 	protected function tearDown()
 	{
-		unset( $this->context, $this->couponItem, $this->orderBase );
+		unset( $this->object, $this->context, $this->couponItem, $this->orderBase );
 	}
 
 
-	public function testAddCoupon()
+	public function testUpdate()
 	{
 		$this->orderBase->addProduct( $this->getOrderProduct() );
 
-		$orderProduct = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/product' )->createItem();
+		$orderProduct = \Aimeos\MShop::create( $this->context, 'order/base/product' )->createItem();
 		$orderProduct->getPrice()->setCurrencyId( 'EUR' );
 		$orderProduct->getPrice()->setValue( '100.00' );
 
@@ -56,7 +57,7 @@ class VoucherTest extends \PHPUnit\Framework\TestCase
 		$object->expects( $this->once() )->method( 'getUsedRebate' )
 			->will( $this->returnValue( 20.0 ) );
 
-		$object->addCoupon( $this->orderBase );
+		$object->update( $this->orderBase );
 
 		$coupons = $this->orderBase->getCoupons();
 		$products = $this->orderBase->getProducts();
@@ -87,10 +88,10 @@ class VoucherTest extends \PHPUnit\Framework\TestCase
 
 	public function testFilterOrderBaseIds()
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->context, 'order' );
+		$manager = \Aimeos\MShop::create( $this->context, 'order' );
 
 		$search = $manager->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.editor', 'core:lib/mshoplib' ) );
 
 		$list = [];
 		foreach( $manager->searchItems( $search ) as $item ) {
@@ -138,8 +139,7 @@ class VoucherTest extends \PHPUnit\Framework\TestCase
 
 	protected function getOrderProduct()
 	{
-		$products = [];
-		$manager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/product' );
+		$manager = \Aimeos\MShop::create( $this->context, 'order/base/product' );
 
 		$search = $manager->createSearch();
 		$search->setConditions( $search->combine( '&&', array(

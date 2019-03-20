@@ -22,18 +22,7 @@ class CouponAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'TablesCreateMShop', 'MShopSetLocale', 'OrderAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['OrderAddTestData'];
 	}
 
 
@@ -66,7 +55,7 @@ class CouponAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addCouponData( array $testdata )
 	{
-		$couponManager = \Aimeos\MShop\Coupon\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$couponManager = \Aimeos\MShop\Coupon\Manager\Factory::create( $this->additional, 'Standard' );
 		$couponCodeManager = $couponManager->getSubmanager( 'code' );
 
 		$couponIds = [];
@@ -113,7 +102,7 @@ class CouponAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addOrderCouponTestData( array $testdata )
 	{
-		$order = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$order = \Aimeos\MShop\Order\Manager\Factory::create( $this->additional, 'Standard' );
 		$orderBase = $order->getSubManager( 'base', 'Standard' );
 		$orderBaseProd = $orderBase->getSubManager( 'product', 'Standard' );
 		$orderBaseCoupon = $orderBase->getSubManager( 'coupon', 'Standard' );

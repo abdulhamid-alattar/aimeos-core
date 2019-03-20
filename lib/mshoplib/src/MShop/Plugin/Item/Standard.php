@@ -31,7 +31,7 @@ class Standard
 	/**
 	 * Initializes the plugin object
 	 *
-	 * @param array $values Associative array of id, typeid, name, config and status
+	 * @param array $values Associative array of id, type, name, config and status
 	 */
 	public function __construct( array $values = [] )
 	{
@@ -55,42 +55,16 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
+	 * Sets the new type of the plugin item.
 	 *
-	 * @return string|null Localized name of the type
-	 */
-	public function getTypeName()
-	{
-		if( isset( $this->values['plugin.typename'] ) ) {
-			return (string) $this->values['plugin.typename'];
-		}
-	}
-
-
-	/**
-	 * Returns the type ID of the plugin.
-	 *
-	 * @return string|null Plugin type ID
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values['plugin.typeid'] ) ) {
-			return (string) $this->values['plugin.typeid'];
-		}
-	}
-
-
-	/**
-	 * Sets the new type ID of the plugin item.
-	 *
-	 * @param string $typeid New plugin type ID
+	 * @param string $type New plugin type
 	 * @return \Aimeos\MShop\Plugin\Item\Iface Plugin item for chaining method calls
 	 */
-	public function setTypeId( $typeid )
+	public function setType( $type )
 	{
-		if( (string) $typeid !== $this->getTypeId() )
+		if( (string) $type !== $this->getType() )
 		{
-			$this->values['plugin.typeid'] = (string) $typeid;
+			$this->values['plugin.type'] = (string) $type;
 			$this->setModified();
 		}
 
@@ -287,33 +261,34 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Plugin\Item\Iface Plugin item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
-		unset( $list['plugin.type'], $list['plugin.typename'] );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'plugin.typeid': $this->setTypeId( $value ); break;
-				case 'plugin.label': $this->setLabel( $value ); break;
-				case 'plugin.provider': $this->setProvider( $value ); break;
-				case 'plugin.config': $this->setConfig( $value ); break;
-				case 'plugin.status': $this->setStatus( $value ); break;
-				case 'plugin.position': $this->setPosition( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'plugin.type': $item = $item->setType( $value ); break;
+				case 'plugin.label': $item = $item->setLabel( $value ); break;
+				case 'plugin.provider': $item = $item->setProvider( $value ); break;
+				case 'plugin.config': $item = $item->setConfig( $value ); break;
+				case 'plugin.status': $item = $item->setStatus( $value ); break;
+				case 'plugin.position': $item = $item->setPosition( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -328,16 +303,11 @@ class Standard
 		$list = parent::toArray( $private );
 
 		$list['plugin.type'] = $this->getType();
-		$list['plugin.typename'] = $this->getTypeName();
 		$list['plugin.label'] = $this->getLabel();
 		$list['plugin.provider'] = $this->getProvider();
 		$list['plugin.config'] = $this->getConfig();
 		$list['plugin.status'] = $this->getStatus();
 		$list['plugin.position'] = $this->getPosition();
-
-		if( $private === true ) {
-			$list['plugin.typeid'] = $this->getTypeId();
-		}
 
 		return $list;
 	}

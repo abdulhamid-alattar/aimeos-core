@@ -310,19 +310,19 @@ return array(
 					'insert' => array(
 						'ansi' => '
 							INSERT INTO "mshop_order_base_product" (
-								"baseid", "ordprodid", "type", "prodid", "prodcode",
+								"baseid", "ordprodid", "ordaddrid", "type", "prodid", "prodcode",
 								"suppliercode", "stocktype", "name", "mediaurl", "quantity",
 								"currencyid", "price", "costs", "rebate", "tax", "taxrate", "taxflag",
 								"flags", "status", "pos", "mtime", "editor", "target", "siteid", "ctime"
 							) VALUES (
-								?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+								?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 							)
 						'
 					),
 					'update' => array(
 						'ansi' => '
 							UPDATE "mshop_order_base_product"
-							SET "baseid" = ?, "ordprodid" = ?, "type" = ?,
+							SET "baseid" = ?, "ordprodid" = ?, "ordaddrid" = ?, "type" = ?,
 								"prodid" = ?, "prodcode" = ?, "suppliercode" = ?,
 								"stocktype" = ?, "name" = ?, "mediaurl" = ?,
 								"quantity" = ?, "currencyid" = ?, "price" = ?, "costs" = ?,
@@ -334,7 +334,7 @@ return array(
 					'search' => array(
 						'ansi' => '
 							SELECT mordbapr."id" AS "order.base.product.id", mordbapr."baseid" AS "order.base.product.baseid",
-								mordbapr."siteid" AS "order.base.product.siteid", mordbapr."ordprodid" AS "order.base.product.ordprodid",
+								mordbapr."siteid" AS "order.base.product.siteid", mordbapr."ordprodid" AS "order.base.product.orderproductid",
 								mordbapr."prodid" AS "order.base.product.productid", mordbapr."prodcode" AS "order.base.product.prodcode",
 								mordbapr."suppliercode" AS "order.base.product.suppliercode", mordbapr."stocktype" AS "order.base.product.stocktype",
 								mordbapr."type" AS "order.base.product.type", mordbapr."name" AS "order.base.product.name",
@@ -345,7 +345,8 @@ return array(
 								mordbapr."taxflag" AS "order.base.product.taxflag", mordbapr."flags" AS "order.base.product.flags",
 								mordbapr."status" AS "order.base.product.status", mordbapr."pos" AS "order.base.product.position",
 								mordbapr."mtime" AS "order.base.product.mtime", mordbapr."editor" AS "order.base.product.editor",
-								mordbapr."ctime" AS "order.base.product.ctime", mordbapr."target" AS "order.base.product.target"
+								mordbapr."ctime" AS "order.base.product.ctime", mordbapr."target" AS "order.base.product.target",
+								mordbapr."ordaddrid" AS "order.base.product.orderaddressid"
 							FROM "mshop_order_base_product" AS mordbapr
 							:joins
 							WHERE :cond
@@ -354,7 +355,8 @@ return array(
 								mordbapr."type", mordbapr."name", mordbapr."mediaurl", mordbapr."quantity", mordbapr."currencyid",
 								mordbapr."price", mordbapr."costs", mordbapr."rebate", mordbapr."tax", mordbapr."taxrate",
 								mordbapr."taxflag", mordbapr."flags", mordbapr."status", mordbapr."pos", mordbapr."mtime",
-								mordbapr."editor", mordbapr."target", mordbapr."ctime" /*-columns*/ , :columns /*columns-*/
+								mordbapr."editor", mordbapr."target", mordbapr."ctime", mordbapr."ordaddrid"
+								/*-columns*/ , :columns /*columns-*/
 							/*-orderby*/ ORDER BY :order /*orderby-*/
 							LIMIT :size OFFSET :start
 						'
@@ -622,9 +624,9 @@ return array(
 						INSERT INTO "mshop_order_base" (
 							"customerid", "sitecode", "langid", "currencyid",
 							"price", "costs", "rebate", "tax", "taxflag", "comment",
-							"status", "mtime", "editor", "siteid", "ctime"
+							"mtime", "editor", "siteid", "ctime"
 						) VALUES (
-							?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+							?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 						)
 					'
 				),
@@ -633,7 +635,7 @@ return array(
 						UPDATE "mshop_order_base"
 						SET "customerid" = ?, "sitecode" = ?, "langid" = ?, "currencyid" = ?,
 							"price" = ?, "costs" = ?, "rebate" = ?, "tax" = ?, "taxflag" = ?,
-							"comment" = ?, "status" = ?, "mtime" = ?, "editor" = ?
+							"comment" = ?, "mtime" = ?, "editor" = ?
 						WHERE "siteid" = ? AND "id" = ?
 					'
 				),
@@ -645,14 +647,14 @@ return array(
 							mordba."price" AS "order.base.price", mordba."costs" AS "order.base.costs",
 							mordba."rebate" AS "order.base.rebate", mordba."tax" AS "order.base.taxvalue",
 							mordba."taxflag" AS "order.base.taxflag", mordba."comment" AS "order.base.comment",
-							mordba."status" AS "order.base.status", mordba."mtime" AS "order.base.mtime",
-							mordba."editor" AS "order.base.editor", mordba."ctime" AS "order.base.ctime"
+							mordba."mtime" AS "order.base.mtime", mordba."ctime" AS "order.base.ctime",
+							mordba."editor" AS "order.base.editor"
 						FROM "mshop_order_base" AS mordba
 						:joins
 						WHERE :cond
 						GROUP BY mordba."id", mordba."siteid", mordba."sitecode", mordba."customerid",
 							mordba."langid", mordba."currencyid", mordba."price", mordba."costs",
-							mordba."rebate", mordba."tax", mordba."taxflag", mordba."comment", mordba."status",
+							mordba."rebate", mordba."tax", mordba."taxflag", mordba."comment",
 							mordba."mtime", mordba."editor", mordba."ctime" /*-columns*/ , :columns /*columns-*/
 						/*-orderby*/ ORDER BY :order /*orderby-*/
 						LIMIT :size OFFSET :start

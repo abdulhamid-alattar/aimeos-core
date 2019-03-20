@@ -22,7 +22,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->context = \TestHelperMShop::getContext();
-		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->context );
+		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::create( $this->context );
 
 		$search = $serviceManager->createSearch();
 		$search->setConditions( $search->compare( '==', 'service.code', 'paypalexpress' ) );
@@ -39,7 +39,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 			->getMock();
 
 
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->context );
 
 		$search = $orderManager->createSearch();
 		$expr = array(
@@ -123,7 +123,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 
 		$helperForm = $this->object->process( $this->order );
 
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->context );
 		$orderBaseManager = $orderManager->getSubManager( 'base' );
 
 		$refOrderBase = $orderBaseManager->load( $this->order->getBaseId() );
@@ -135,7 +135,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 			$attributeList[$attribute->getCode()] = $attribute;
 		}
 
-		$this->assertInstanceOf( \Aimeos\MShop\Common\Item\Helper\Form\Iface::class, $helperForm );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Helper\Form\Iface::class, $helperForm );
 		$this->assertEquals( 'https://www.sandbox.paypal.com/webscr&cmd=_express-checkout&useraction=commit&token=UT-99999999', $helperForm->getUrl() );
 		$this->assertEquals( 'POST', $helperForm->getMethod() );
 		$this->assertEquals( [], $helperForm->getValues() );
@@ -179,7 +179,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 	public function testUpdatePush()
 	{
 		//IPN Call
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->context );
 		$orderBaseManager = $orderManager->getSubManager( 'base' );
 
 		$price = $orderBaseManager->getItem( $this->order->getBaseId() )->getPrice();
@@ -253,7 +253,7 @@ class PayPalExpressTest extends \PHPUnit\Framework\TestCase
 			'REFUNDTRANSACTIONID' => '88888888'
 		);
 
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->context );
 		$orderBaseManager = $orderManager->getSubManager( 'base' );
 
 		$refOrderBase = $orderBaseManager->load( $this->order->getBaseId() );

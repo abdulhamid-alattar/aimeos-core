@@ -22,7 +22,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	protected function setUp()
 	{
-		$manager = \Aimeos\MShop\Locale\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Locale\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$this->siteItem = $manager->getSubManager( 'site' )->createItem();
 
 		$this->values = array(
@@ -218,7 +218,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$item = new \Aimeos\MShop\Locale\Item\Standard();
 
-		$list = array(
+		$list = $entries = array(
 			'locale.id' => 1,
 			'locale.siteid' => 2,
 			'locale.languageid' => 'de',
@@ -227,10 +227,9 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			'locale.status' => 0,
 		);
 
-		$unknown = $item->fromArray( $list );
+		$item = $item->fromArray( $entries, true );
 
-		$this->assertEquals( [], $unknown );
-
+		$this->assertEquals( [], $entries );
 		$this->assertEquals( $list['locale.id'], $item->getId() );
 		$this->assertEquals( $list['locale.siteid'], $item->getSiteId() );
 		$this->assertEquals( $list['locale.languageid'], $item->getLanguageId() );

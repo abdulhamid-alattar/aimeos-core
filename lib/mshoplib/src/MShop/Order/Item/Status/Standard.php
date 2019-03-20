@@ -130,29 +130,31 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Order\Item\Status\Iface Order status item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'order.status.parentid': $this->setParentId( $value ); break;
-				case 'order.status.type': $this->setType( $value ); break;
-				case 'order.status.value': $this->setValue( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'order.status.parentid': !$private ?: $item = $item->setParentId( $value ); break;
+				case 'order.status.type': $item = $item->setType( $value ); break;
+				case 'order.status.value': $item = $item->setValue( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 

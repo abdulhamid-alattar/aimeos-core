@@ -305,36 +305,39 @@ class Standard extends Base implements Iface
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'order.base.service.baseid': $this->setBaseId( $value ); break;
-				case 'order.base.service.code': $this->setCode( $value ); break;
-				case 'order.base.service.serviceid': $this->setServiceId( $value ); break;
-				case 'order.base.service.name': $this->setName( $value ); break;
-				case 'order.base.service.mediaurl': $this->setMediaUrl( $value ); break;
-				case 'order.base.service.type': $this->setType( $value ); break;
-				case 'order.base.service.price': $this->price->setValue( $value ); break;
-				case 'order.base.service.costs': $this->price->setCosts( $value ); break;
-				case 'order.base.service.rebate': $this->price->setRebate( $value ); break;
-				case 'order.base.service.taxrate': $this->price->setTaxRate( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'order.base.service.siteid': !$private ?: $item = $item->setSiteId( $value ); break;
+				case 'order.base.service.baseid': !$private ?: $item = $item->setBaseId( $value ); break;
+				case 'order.base.service.serviceid': !$private ?: $item = $item->setServiceId( $value ); break;
+				case 'order.base.service.type': $item = $item->setType( $value ); break;
+				case 'order.base.service.code': $item = $item->setCode( $value ); break;
+				case 'order.base.service.name': $item = $item->setName( $value ); break;
+				case 'order.base.service.mediaurl': $item = $item->setMediaUrl( $value ); break;
+				case 'order.base.service.price': $this->price = $this->price->setValue( $value ); break;
+				case 'order.base.service.costs': $this->price = $this->price->setCosts( $value ); break;
+				case 'order.base.service.rebate': $this->price = $this->price->setRebate( $value ); break;
+				case 'order.base.service.taxrate': $this->price = $this->price->setTaxRate( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -348,16 +351,14 @@ class Standard extends Base implements Iface
 	{
 		$list = parent::toArray( $private );
 
-		$price = $this->price;
-
 		$list['order.base.service.type'] = $this->getType();
 		$list['order.base.service.code'] = $this->getCode();
 		$list['order.base.service.name'] = $this->getName();
 		$list['order.base.service.mediaurl'] = $this->getMediaUrl();
-		$list['order.base.service.price'] = $price->getValue();
-		$list['order.base.service.costs'] = $price->getCosts();
-		$list['order.base.service.rebate'] = $price->getRebate();
-		$list['order.base.service.taxrate'] = $price->getTaxRate();
+		$list['order.base.service.price'] = $this->price->getValue();
+		$list['order.base.service.costs'] = $this->price->getCosts();
+		$list['order.base.service.rebate'] = $this->price->getRebate();
+		$list['order.base.service.taxrate'] = $this->price->getTaxRate();
 
 		if( $private === true )
 		{
@@ -389,8 +390,6 @@ class Standard extends Base implements Iface
 			$this->setMediaUrl( $item->getUrl() );
 		}
 
-		$this->setModified();
-
-		return $this;
+		return $this->setModified();
 	}
 }

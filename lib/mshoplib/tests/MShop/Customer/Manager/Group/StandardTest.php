@@ -1,12 +1,14 @@
 <?php
 
-namespace Aimeos\MShop\Common\Manager\Group;
-
-
 /**
  * @license LGPLv3, http://opensource.org/licenses/LGPL-3.0
  * @copyright Aimeos (aimeos.org), 2015-2018
  */
+
+
+namespace Aimeos\MShop\Common\Manager\Group;
+
+
 class StandardTest extends \PHPUnit\Framework\TestCase
 {
 	private $object = null;
@@ -30,15 +32,19 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
 	public function testGetResourceType()
 	{
-		$result = $this->object->getResourceType();
-
-		$this->assertContains( 'customer/group', $result );
+		$this->assertContains( 'customer/group', $this->object->getResourceType() );
 	}
 
 
@@ -67,7 +73,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$search->setConditions( $search->compare( '==', 'customer.group.label', 'Unitgroup' ) );
 
 		$items = $this->object->searchItems( $search );

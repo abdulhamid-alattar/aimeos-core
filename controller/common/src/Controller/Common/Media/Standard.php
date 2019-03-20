@@ -40,7 +40,7 @@ class Standard
 	 * {inheritDoc}
 	 *
 	 * @param \Aimeos\MShop\Media\Item\Iface $item Media item to add the file references to
-	 * @param \Psr\Http\Message\UploadedFileInterface Uploaded file
+	 * @param \Psr\Http\Message\UploadedFileInterface $file Uploaded file
 	 * @param string $fsname Name of the file system to store the files at
 	 */
 	public function add( \Aimeos\MShop\Media\Item\Iface $item, \Psr\Http\Message\UploadedFileInterface $file, $fsname = 'fs-media' )
@@ -72,7 +72,7 @@ class Standard
 			$item->setUrl( $filepath );
 		}
 
-		$item->setLabel( basename( $file->getClientFilename() ) );
+		$item->getLabel() ?: $item->setLabel( basename( $file->getClientFilename() ) );
 		$item->setMimeType( $mimetype );
 	}
 
@@ -124,7 +124,6 @@ class Standard
 	public function scale( \Aimeos\MShop\Media\Item\Iface $item, $fsname = 'fs-media' )
 	{
 		$path = $item->getUrl();
-		$config = $this->context->getConfig();
 		$media = $this->getMediaFile( $this->getFileContent( $path, $fsname ) );
 
 		if( !( $media instanceof \Aimeos\MW\Media\Image\Iface ) ) {
@@ -390,7 +389,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MW\Media\Image\Iface $media Media object
 	 * @param string $type Type of the image like "preview" or "files"
-	 * @param \Aimeos\MW\Media\Image\Iface Scaled media object
+	 * @return \Aimeos\MW\Media\Image\Iface Scaled media object
 	 */
 	protected function scaleImage( \Aimeos\MW\Media\Image\Iface $media, $type )
 	{
@@ -470,7 +469,11 @@ class Standard
 		 */
 		$maxheight = $config->get( 'controller/common/media/standard/' . $type . '/maxheight', null );
 
-		return $media->scale( $maxwidth, $maxheight );
+		if( $maxheight || $maxwidth ) {
+			return $media->scale( $maxwidth, $maxheight );
+		}
+
+		return $media;
 	}
 
 

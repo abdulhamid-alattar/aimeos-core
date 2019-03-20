@@ -33,8 +33,8 @@ class Standard
 	 *
 	 * @param array $values Values to be set on initialisation
 	 * @param \Aimeos\MShop\Locale\Item\Site\Iface|null $site Site object
-	 * @param array $sitePath List of site IDs up to the root site item
-	 * @param array $siteSubTree List of site IDs from all sites below the current site
+	 * @param string[] $sitePath List of site IDs up to the root site item
+	 * @param string[] $siteSubTree List of site IDs from all sites below the current site
 	 */
 	public function __construct( array $values = [], \Aimeos\MShop\Locale\Item\Site\Iface $site = null,
 		array $sitePath = [], array $siteSubTree = [] )
@@ -111,7 +111,7 @@ class Standard
 	/**
 	 * Sets the identifier of the shop instance.
 	 *
-	 * @param string ID of the shop instance
+	 * @param string $id ID of the shop instance
 	 * @return \Aimeos\MShop\Locale\Item\Iface Locale item for chaining method calls
 	 */
 	public function setSiteId( $id )
@@ -286,35 +286,33 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Locale\Item\Iface Locale item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-
-		if( isset( $list['locale.siteid'] ) ) {
-			$this->setSiteId( $list['locale.siteid'] );
-		}
-
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'locale.languageid': $this->setLanguageId( $value ); break;
-				case 'locale.currencyid': $this->setCurrencyId( $value ); break;
-				case 'locale.position': $this->setPosition( $value ); break;
-				case 'locale.status': $this->setStatus( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'locale.siteid': $item = $item->setSiteId( $value ); break;
+				case 'locale.languageid': $item = $item->setLanguageId( $value ); break;
+				case 'locale.currencyid': $item = $item->setCurrencyId( $value ); break;
+				case 'locale.position': $item = $item->setPosition( $value ); break;
+				case 'locale.status': $item = $item->setStatus( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 

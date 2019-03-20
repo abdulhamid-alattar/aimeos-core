@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$search = $this->object->createSearch();
 		$expr = array(
 			$search->compare( '==', 'order.base.service.attribute.type', 'payment' ),
-			$search->compare( '==', 'order.base.service.attribute.editor', 'core:unittest' ),
+			$search->compare( '==', 'order.base.service.attribute.editor', 'core:lib/mshoplib' ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -48,8 +48,15 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
+	}
+
 
 
 	public function testGetResourceType()
@@ -127,7 +134,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'order.base.service.attribute.code', 'REFID' ),
 			$search->compare( '==', 'order.base.service.attribute.editor', $this->editor )

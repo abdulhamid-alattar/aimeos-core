@@ -75,7 +75,7 @@ class DirectDebit
 
 		try
 		{
-			$address = $basket->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
+			$address = $basket->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT, 0 );
 
 			if( ( $fn = $address->getFirstname() ) !== '' && ( $ln = $address->getLastname() ) !== '' ) {
 				$feconfig['directdebit.accountowner']['default'] = $fn . ' ' . $ln;
@@ -105,23 +105,29 @@ class DirectDebit
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem Order service item that will be added to the basket
 	 * @param array $attributes Attribute key/value pairs entered by the customer during the checkout process
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item with attributes added
 	 */
 	public function setConfigFE( \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem, array $attributes )
 	{
-		$this->setAttributes( $orderServiceItem, $attributes, 'payment' );
+		$orderServiceItem = $this->setAttributes( $orderServiceItem, $attributes, 'payment' );
 
 		if( ( $attrItem = $orderServiceItem->getAttributeItem( 'directdebit.accountno', 'payment' ) ) !== null )
 		{
 			$attrList = array( $attrItem->getCode() => $attrItem->getValue() );
 			$this->setAttributes( $orderServiceItem, $attrList, 'payment/hidden' );
-
 			$value = $attrItem->getValue();
-			$len = strlen( $value );
-			$xstr = ( $len > 3 ? str_repeat( 'X', $len - 3 ) : '' );
 
-			$attrItem->setValue( $xstr . substr( $value, -3 ) );
-			$orderServiceItem->setAttributeItem( $attrItem );
+			if( is_string( $value ) )
+			{
+				$len = strlen( $value );
+				$xstr = ( $len > 3 ? str_repeat( 'X', $len - 3 ) : '' );
+
+				$attrItem->setValue( $xstr . substr( $value, -3 ) );
+				$orderServiceItem->setAttributeItem( $attrItem );
+			}
 		}
+
+		return $orderServiceItem;
 	}
 
 

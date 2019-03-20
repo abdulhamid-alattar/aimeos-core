@@ -55,12 +55,10 @@ abstract class Base
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Common\Item\Type\Iface New type item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values[$this->prefix . 'siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -71,7 +69,7 @@ abstract class Base
 	 * Creates a search object and optionally sets base criteria.
 	 *
 	 * @param boolean $default Add default criteria
-	 * @return \Aimeos\MW\Criteria\Iface Criteria object
+	 * @return \Aimeos\MW\Criteria\Iface Search criteria object
 	 */
 	public function createSearch( $default = false )
 	{
@@ -157,7 +155,8 @@ abstract class Base
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Common\Manager\Type\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -188,7 +187,7 @@ abstract class Base
 	/**
 	 * Returns the type item specified by its ID
 	 *
-	 * @param integer $id ID of type item object
+	 * @param string $id ID of type item object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @return \Aimeos\MShop\Common\Item\Type\Iface Returns the type item of the given ID
 	 * @throws \Aimeos\MShop\Exception If item couldn't be found
@@ -217,12 +216,6 @@ abstract class Base
 
 		try
 		{
-			$domain = explode( '.', $this->prefix );
-
-			if( ( $topdomain = array_shift( $domain ) ) === null ) {
-				throw new \Aimeos\MShop\Exception( 'No configuration available.' );
-			}
-
 			$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
 			$cfgPathSearch = $this->getConfigPath() . 'search';
 			$cfgPathCount = $this->getConfigPath() . 'count';

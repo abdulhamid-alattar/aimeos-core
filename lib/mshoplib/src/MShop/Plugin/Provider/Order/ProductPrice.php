@@ -34,10 +34,12 @@ class ProductPrice
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'check.after' );
+		$p->attach( $this->getObject(), 'check.after' );
+		return $this;
 	}
 
 
@@ -47,13 +49,13 @@ class ProductPrice
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
 	 * @throws \Aimeos\MShop\Plugin\Provider\Exception if checks fail
-	 * @return bool true if checks succeed
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
 		if( ( $value & \Aimeos\MShop\Order\Item\Base\Base::PARTS_PRODUCT ) === 0 ) {
-			return true;
+			return $value;
 		}
 
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
@@ -72,14 +74,14 @@ class ProductPrice
 			foreach( $item->getAttributeItems() as $ordAttrItem )
 			{
 				if( ( $id = $ordAttrItem->getAttributeId() ) != '' ) {
-					$attrIds[$id] = null;
+					$attrIds[] = $id;
 				}
 			}
 		}
 
 
-		$attributes = $this->getAttributes( array_keys( $attrIds ) );
-		$prodMap = $this->getProducts( $prodCodes );
+		$attributes = $this->getAttributeItems( array_unique( $attrIds ) );
+		$prodMap = $this->getProductItems( $prodCodes );
 
 
 		foreach( $orderProducts as $pos => $orderProduct )
@@ -96,11 +98,7 @@ class ProductPrice
 
 			if( $orderPosPrice->getTaxFlag() === $price->getTaxFlag() && $orderPosPrice->compare( $price ) === false )
 			{
-				$orderProduct->setPrice( $price );
-
-				$order->deleteProduct( $pos );
-				$order->addProduct( $orderProduct, $pos );
-
+				$order->addProduct( $orderProduct->setPrice( $price ), $pos );
 				$changedProducts[$pos] = 'price.changed';
 			}
 		}
@@ -112,32 +110,30 @@ class ProductPrice
 			throw new \Aimeos\MShop\Plugin\Provider\Exception( $msg, -1, null, $code );
 		}
 
-		return true;
+		return $value;
 	}
 
 
 	/**
 	 * Returns the attribute items for the given IDs.
 	 *
-	 * @param array $ids List of attribute IDs
+	 * @param array $list List of attribute IDs
 	 * @return \Aimeos\MShop\Attribute\Item\Iface[] List of attribute items
 	 */
-	protected function getAttributes( array $ids )
+	protected function getAttributeItems( array $list )
 	{
-		if( empty( $ids ) ) {
-			return [];
+		if( $list !== [] )
+		{
+			$attrManager = \Aimeos\MShop::create( $this->getContext(), 'attribute' );
+
+			$search = $attrManager->createSearch( true );
+			$expr = [$search->compare( '==', 'attribute.id', $list ), $search->getConditions()];
+			$search->setConditions( $search->combine( '&&', $expr ) );
+
+			$list = $attrManager->searchItems( $search, ['price'] );
 		}
 
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'attribute' );
-
-		$search = $attrManager->createSearch( true );
-		$expr = array(
-			$search->compare( '==', 'attribute.id', $ids ),
-			$search->getConditions(),
-		);
-		$search->setConditions( $search->combine( '&&', $expr ) );
-
-		return $attrManager->searchItems( $search, array( 'price' ) );
+		return $list;
 	}
 
 
@@ -145,15 +141,16 @@ class ProductPrice
 	 * Returns the product items for the given product codes.
 	 *
 	 * @param string[] $prodCodes Product codes
+	 * @return \Aimeos\MShop\Product\Item\Iface[] Associative list of codes as keys and product items as values
 	 */
-	protected function getProducts( array $prodCodes )
+	protected function getProductItems( array $prodCodes )
 	{
 		if( empty( $prodCodes ) ) {
 			return [];
 		}
 
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'attribute' );
-		$productManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' );
+		$attrManager = \Aimeos\MShop::create( $this->getContext(), 'attribute' );
+		$productManager = \Aimeos\MShop::create( $this->getContext(), 'product' );
 
 		$attrId = $attrManager->findItem( 'custom', [], 'product', 'price' )->getId();
 
@@ -166,15 +163,13 @@ class ProductPrice
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
-		$products = $productManager->searchItems( $search, array( 'price' ) );
+		$map = [];
 
-		$prodMap = [];
-
-		foreach( $products as $item ) {
-			$prodMap[$item->getCode()] = $item;
+		foreach( $productManager->searchItems( $search, ['price'] ) as $item ) {
+			$map[$item->getCode()] = $item;
 		}
 
-		return $prodMap;
+		return $map;
 	}
 
 
@@ -182,7 +177,7 @@ class ProductPrice
 	 * Returns the actual price for the given order product.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $orderProduct Ordered product
-	 * @param array $refPrices Prices associated to the original product
+	 * @param \Aimeos\MShop\Price\Item\Iface[] $refPrices Prices associated to the original product
 	 * @param \Aimeos\MShop\Attribute\Item\Iface[] $attributes Attribute items with prices
 	 * @param integer $pos Position of the product in the basket
 	 * @return \Aimeos\MShop\Price\Item\Iface Price item including the calculated price
@@ -194,7 +189,7 @@ class ProductPrice
 		// fetch prices of selection/parent products
 		if( empty( $refPrices ) )
 		{
-			$productManager = \Aimeos\MShop\Factory::createManager( $context, 'product' );
+			$productManager = \Aimeos\MShop::create( $context, 'product' );
 			$product = $productManager->getItem( $orderProduct->getProductId(), array( 'price' ) );
 			$refPrices = $product->getRefItems( 'price', 'default', 'default' );
 		}
@@ -209,7 +204,7 @@ class ProductPrice
 			throw new \Aimeos\MShop\Plugin\Provider\Exception( sprintf( $msg, $pid, $pcode ), -1, null, $codes );
 		}
 
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $context, 'price' );
 		$price = clone $priceManager->getLowestPrice( $refPrices, $orderProduct->getQuantity() );
 
 		// add prices of product attributes to compute the end price for comparison
@@ -222,14 +217,14 @@ class ProductPrice
 				$attrPrices = $attributes[$attrId]->getRefItems( 'price', 'default', 'default' );
 			}
 
-			if( !empty( $attrPrices ) ) {
-				$price->addItem( $priceManager->getLowestPrice( $attrPrices, $orderAttribute->getQuantity() ), $orderAttribute->getQuantity() );
+			if( !empty( $attrPrices ) )
+			{
+				$lowPrice = $priceManager->getLowestPrice( $attrPrices, $orderAttribute->getQuantity() );
+				$price = $price->addItem( $lowPrice, $orderAttribute->getQuantity() );
 			}
 		}
 
 		// reset product rebates like in the basket controller
-		$price->setRebate( '0.00' );
-
-		return $price;
+		return $price->setRebate( '0.00' );
 	}
 }

@@ -17,8 +17,8 @@ namespace Aimeos\MShop\Plugin\Provider\Order;
  * the configured number of times. This is bound to the e-mail address of the customer.
  *
  * The following options are available:
- * - freeproduct.productcode: '...' (SKU code of the product that should be available for free)
- * - freeproduct.count: ... (how often the product can be bought for free)
+ * - productcode: '...' (SKU code of the product that should be available for free)
+ * - count: ... (how often the product can be bought for free)
  *
  * @package MShop
  * @subpackage Plugin
@@ -28,18 +28,18 @@ class FreeProduct
 	implements \Aimeos\MShop\Plugin\Provider\Iface, \Aimeos\MShop\Plugin\Provider\Factory\Iface
 {
 	private $beConfig = array(
-		'freeproduct.productcode' => array(
-			'code' => 'freeproduct.productcode',
-			'internalcode' => 'freeproduct.productcode',
+		'productcode' => array(
+			'code' => 'productcode',
+			'internalcode' => 'productcode',
 			'label' => 'SKU of the free product',
 			'type' => 'string',
 			'internaltype' => 'string',
 			'default' => '',
 			'required' => true,
 		),
-		'freeproduct.count' => array(
-			'code' => 'freeproduct.count',
-			'internalcode' => 'freeproduct.count',
+		'count' => array(
+			'code' => 'count',
+			'internalcode' => 'count',
 			'label' => 'Number of times the product is available for free',
 			'type' => 'integer',
 			'internaltype' => 'integer',
@@ -80,10 +80,12 @@ class FreeProduct
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'addProduct.after' );
+		$p->attach( $this->getObject(), 'addProduct.after' );
+		return $this;
 	}
 
 
@@ -93,30 +95,25 @@ class FreeProduct
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
-	 * @throws \Aimeos\MShop\Plugin\Provider\Exception if an error occurs
-	 * @return bool true if subsequent plugins should be processed
+	 * @return mixed Modified value parameter
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $value );
 
-		$code = $this->getConfigValue( 'freeproduct.productcode' );
+		$code = $this->getConfigValue( 'productcode' );
+		$addresses = $order->getAddress( \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_PAYMENT );
 
-		if( $value->getProductCode() !== $code ) {
-			return true;
+		if( $value->getProductCode() !== $code || ( $address = current( $addresses ) ) === false ) {
+			return $value;
 		}
 
-		$addresses = $order->getAddresses();
-		if( !isset( $addresses['payment'] ) ) {
-			return true;
-		}
-
-		$email = $addresses['payment']->getEmail();
-		$count = $this->getConfigValue( 'freeproduct.count' );
+		$email = $address->getEmail();
+		$count = $this->getConfigValue( 'count' );
 		$status = \Aimeos\MShop\Order\Item\Base::PAY_AUTHORIZED;
 
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'order' );
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'order' );
 
 		$search = $manager->createSearch();
 		$expr = [
@@ -129,9 +126,9 @@ class FreeProduct
 		$result = $manager->aggregate( $search, 'order.base.address.email', 'order.base.product.quantity', 'sum' );
 
 		if( isset( $result[$email] ) && $result[$email] < $count ) {
-			$value->getPrice()->setRebate( $value->getPrice()->getValue() )->setValue( '0.00' );
+			$value->setPrice( $value->getPrice()->setRebate( $value->getPrice()->getValue() )->setValue( '0.00' ) );
 		}
 
-		return true;
+		return $value;
 	}
 }

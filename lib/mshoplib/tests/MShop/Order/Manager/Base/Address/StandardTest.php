@@ -22,7 +22,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
 		$this->context = \TestHelperMShop::getContext();
 
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->context );
 		$this->object = $orderManager->getSubManager( 'base' )->getSubManager( 'address' );
 	}
 
@@ -36,7 +36,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregate()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.address.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.address.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.address.salutation' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -47,7 +47,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -84,7 +90,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$type = \Aimeos\MShop\Order\Item\Base\Address\Base::TYPE_DELIVERY;
 
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '==', 'order.base.address.type', $type ),
 			$search->compare( '==', 'order.base.address.editor', $this->editor )

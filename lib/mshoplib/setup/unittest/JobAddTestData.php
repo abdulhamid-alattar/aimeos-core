@@ -23,18 +23,7 @@ class JobAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'OrderAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -46,7 +35,7 @@ class JobAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding admin test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$this->addJobTestData();
 
@@ -61,7 +50,7 @@ class JobAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addJobTestData()
 	{
-		$adminJobManager = \Aimeos\MAdmin\Job\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$adminJobManager = \Aimeos\MAdmin\Job\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'job.php';

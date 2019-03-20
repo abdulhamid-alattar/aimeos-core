@@ -25,11 +25,16 @@ class ProductFreeOptions
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'addProduct.after' );
-		$p->addListener( $this->getObject(), 'editProduct.after' );
+		$plugin = $this->getObject();
+
+		$p->attach( $plugin, 'addProduct.after' );
+		$p->attach( $plugin, 'setProducts.after' );
+
+		return $this;
 	}
 
 
@@ -39,51 +44,22 @@ class ProductFreeOptions
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
-		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
-
-		$attrQtys = $attrTypes = [];
-		$context = $this->getContext();
-
-		$prodManager = \Aimeos\MShop\Factory::createManager( $context, 'product' );
-		$prodItem = $prodManager->getItem( $value->getProductId(), ['price'] );
-		$prodConf = $prodItem->getConfig();
-
-
-		foreach( $value->getAttributeItems( 'config' ) as $attr )
+		if( is_array( $value ) )
 		{
-			$attrQtys[$attr->getAttributeId()] = $attr->getQuantity();
-			$attrTypes[] = $attr->getCode();
-		}
-
-		if( array_intersect( $attrTypes, array_keys( $prodConf ) ) === [] ) {
-			return true;
-		}
-
-
-		$priceManager = \Aimeos\MShop\Factory::createManager( $context, 'price' );
-
-		$prices = $prodItem->getRefItems( 'price', 'default', 'default' );
-		$priceItem = $priceManager->getLowestPrice( $prices, $value->getQuantity() );
-
-		foreach( $this->getAttributeMap( array_keys( $attrQtys ) ) as $type => $list )
-		{
-			if( isset( $prodConf[$type] ) )
-			{
-				$list = $this->sortByPrice( $list, $attrQtys );
-				$priceItem = $this->addPrices( $priceItem, $list, $attrQtys, (int) $prodConf[$type] );
-			}
-			else
-			{
-				$priceItem = $this->addPrices( $priceItem, $list, $attrQtys, 0 );
+			foreach( $value as $key => $product ) {
+				$value[$key] = $this->updatePrice( $product );
 			}
 		}
+		else
+		{
+			$value = $this->updatePrice( $value );
+		}
 
-		$value->setPrice( $priceItem );
-
-		return true;
+		return $value;
 	}
 
 
@@ -93,12 +69,12 @@ class ProductFreeOptions
 	 * @param \Aimeos\MShop\Price\Item\Iface $price Product price item
 	 * @param array $attrItems Associative list of attribute IDs as keys and items with prices as values
 	 * @param array $quantities Associative list of attribute IDs as keys and their quantities as values
-	 * @param integer Number of free items
-	 * @param \Aimeos\MShop\Price\Item\Iface Price item with attribute prices added
+	 * @param integer $free Number of free items
+	 * @return \Aimeos\MShop\Price\Item\Iface Price item with attribute prices added
 	 */
 	protected function addPrices( \Aimeos\MShop\Price\Item\Iface $price, array $attrItems, array $quantities, $free )
 	{
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' );
+		$priceManager = \Aimeos\MShop::create( $this->getContext(), 'price' );
 
 		foreach( $attrItems as $attrId => $attrItem )
 		{
@@ -112,7 +88,7 @@ class ProductFreeOptions
 				if( $quantity > 0 )
 				{
 					$priceItem = $priceManager->getLowestPrice( $prices, $quantity );
-					$price->addItem( $priceItem, $quantity );
+					$price = $price->addItem( $priceItem, $quantity );
 				}
 			}
 		}
@@ -130,7 +106,7 @@ class ProductFreeOptions
 	protected function getAttributeMap( array $ids )
 	{
 		$attrMap = [];
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'attribute' );
+		$attrManager = \Aimeos\MShop::create( $this->getContext(), 'attribute' );
 
 		$search = $attrManager->createSearch()->setSlice( 0, count( $ids ) );
 		$search->setConditions( $search->compare( '==', 'attribute.id', $ids ) );
@@ -152,7 +128,7 @@ class ProductFreeOptions
 	 */
 	protected function sortByPrice( array $attrItems, array $attrQtys )
 	{
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' );
+		$priceManager = \Aimeos\MShop::create( $this->getContext(), 'price' );
 
 		$sortFcn = function( $a, $b ) use( $priceManager, $attrQtys )
 		{
@@ -182,5 +158,49 @@ class ProductFreeOptions
 		uasort( $attrItems, $sortFcn );
 
 		return $attrItems;
+	}
+
+
+	/** Updates the price of the product
+	 *
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface $product Ordered product for updating the price
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Ordered product with updated price
+	 */
+	protected function updatePrice( \Aimeos\MShop\Order\Item\Base\Product\Iface $product )
+	{
+		$attrQtys = $attrTypes = [];
+		$context = $this->getContext();
+		$prodItem = \Aimeos\MShop::create( $context, 'product' )->getItem( $product->getProductId(), ['price'] );
+		$prodConf = $prodItem->getConfig();
+
+
+		foreach( $product->getAttributeItems( 'config' ) as $attr )
+		{
+			$attrQtys[$attr->getAttributeId()] = $attr->getQuantity();
+			$attrTypes[] = $attr->getCode();
+		}
+
+		if( array_intersect( $attrTypes, array_keys( $prodConf ) ) === [] ) {
+			return $product;
+		}
+
+
+		$prices = $prodItem->getRefItems( 'price', 'default', 'default' );
+		$priceItem = \Aimeos\MShop::create( $context, 'price' )->getLowestPrice( $prices, $product->getQuantity() );
+
+		foreach( $this->getAttributeMap( array_keys( $attrQtys ) ) as $type => $list )
+		{
+			if( isset( $prodConf[$type] ) )
+			{
+				$list = $this->sortByPrice( $list, $attrQtys );
+				$priceItem = $this->addPrices( $priceItem, $list, $attrQtys, (int) $prodConf[$type] );
+			}
+			else
+			{
+				$priceItem = $this->addPrices( $priceItem, $list, $attrQtys, 0 );
+			}
+		}
+
+		return $product->setPrice( $priceItem );
 	}
 }

@@ -23,18 +23,7 @@ class ProductAddStockTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -46,20 +35,41 @@ class ProductAddStockTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding stock test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
+		$testdata = $this->getData();
 		$config = $this->additional->getConfig();
 		$name = $config->get( 'mshop/stock/manager/name' );
 
-		\Aimeos\MShop\Factory::clear();
 		$config->set( 'mshop/stock/manager/name', 'Standard' );
 
-		$this->createData( $this->getData() );
+		$this->addTypeItems( $testdata, ['stock/type'] );
+		$this->createData( $testdata );
 
 		$config->set( 'mshop/stock/manager/name', $name );
-		\Aimeos\MShop\Factory::clear();
 
 		$this->status( 'done' );
+	}
+
+
+	/**
+	 * Creates the type test data
+	 *
+	 * @param array $testdata Associative list of key/list pairs
+	 * @param array $domains List of domain names
+	 */
+	protected function addTypeItems( array $testdata, array $domains )
+	{
+		foreach( $domains as $domain )
+		{
+			$manager = \Aimeos\MShop::create( $this->additional, $domain );
+
+			foreach( $testdata[$domain] as $key => $entry )
+			{
+				$item = $manager->createItem()->fromArray( $entry );
+				$manager->saveItem( $item );
+			}
+		}
 	}
 
 
@@ -71,18 +81,11 @@ class ProductAddStockTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function createData( array $testdata )
 	{
-		$manager = \Aimeos\MShop\Factory::createManager( $this->additional, 'stock' );
-		$typeIds = $this->getTypeIds( $testdata, ['stock/type'] );
+		$manager = \Aimeos\MShop::create( $this->additional, 'stock' );
 		$items = [];
 
-		foreach( $testdata['stock'] as $key => $entry )
-		{
-			if( !isset( $typeIds['stock/type'][$entry['stock.type']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No stock type ID found for "%1$s"', $entry['stock.type'] ) );
-			}
-
-			list( $domain, $code ) = explode( '/', $entry['stock.type'] );
-			$items[] = $manager->createItem( $code, $domain, $entry )->setId( null );
+		foreach( $testdata['stock'] as $key => $entry ) {
+			$items[] = $manager->createItem( $entry )->setId( null );
 		}
 
 		$manager->begin();
@@ -105,33 +108,5 @@ class ProductAddStockTestData extends \Aimeos\MW\Setup\Task\Base
 		}
 
 		return $testdata;
-	}
-
-
-	/**
-	 * Creates the type test data and returns their IDs
-	 *
-	 * @param array $testdata Associative list of key/list pairs
-	 * @param array $domains List of domain names
-	 * @return array Associative list of type/key/ID triples
-	 */
-	protected function getTypeIds( array $testdata, array $domains )
-	{
-		$typeIds = [];
-
-		foreach( $domains as $domain )
-		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->additional, $domain );
-
-			foreach( $testdata[$domain] as $key => $entry )
-			{
-				$item = $manager->createItem();
-				$item->fromArray( $entry );
-
-				$typeIds[$domain][$key] = $manager->saveItem( $item )->getId();
-			}
-		}
-
-		return $typeIds;
 	}
 }

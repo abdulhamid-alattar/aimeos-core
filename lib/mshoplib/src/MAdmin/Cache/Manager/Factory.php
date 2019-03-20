@@ -29,7 +29,7 @@ class Factory
 	 * @param string|null $name Manager name
 	 * @return \Aimeos\MAdmin\Cache\Manager\Iface Cache manager object
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** madmin/cache/manager/name
 		 * Class name of the used cache manager implementation
@@ -77,7 +77,7 @@ class Factory
 		$iface = \Aimeos\MAdmin\Cache\Manager\Iface::class;
 		$classname = '\Aimeos\MAdmin\Cache\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** madmin/cache/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the cache manager

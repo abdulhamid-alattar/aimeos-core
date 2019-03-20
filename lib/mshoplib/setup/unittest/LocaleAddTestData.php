@@ -22,7 +22,7 @@ class LocaleAddTestData extends \Aimeos\MW\Setup\Task\MShopAddLocaleData
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopAddLocaleLangCurData' );
+		return ['MShopAddLocaleLangCurData'];
 	}
 
 
@@ -33,7 +33,7 @@ class LocaleAddTestData extends \Aimeos\MW\Setup\Task\MShopAddLocaleData
 	 */
 	public function getPostDependencies()
 	{
-		return array( 'MShopAddLocaleData' );
+		return ['MShopAddLocaleData'];
 	}
 
 
@@ -49,7 +49,7 @@ class LocaleAddTestData extends \Aimeos\MW\Setup\Task\MShopAddLocaleData
 
 
 		// Set editor for further tasks
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 
 		if( $this->additional->getConfig()->get( 'setup/site' ) === 'unittest' )
@@ -61,7 +61,7 @@ class LocaleAddTestData extends \Aimeos\MW\Setup\Task\MShopAddLocaleData
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No data file "%1$s" found', $filename ) );
 			}
 
-			$localeManager = \Aimeos\MShop\Locale\Manager\Factory::createManager( $this->additional );
+			$localeManager = \Aimeos\MShop\Locale\Manager\Factory::create( $this->additional );
 
 			$this->cleanupSites( $localeManager );
 

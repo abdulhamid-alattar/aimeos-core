@@ -20,9 +20,10 @@ namespace Aimeos\MShop\Common\Manager\Property;
 abstract class Base
 	extends \Aimeos\MShop\Common\Manager\Base
 {
-	private $prefix;
-	private $searchConfig;
 	private $languageId;
+	private $searchConfig;
+	private $plugins = [];
+	private $prefix;
 
 
 	/**
@@ -48,27 +49,20 @@ abstract class Base
 		if( ( $this->prefix = substr( $entry['code'], 0, $pos + 1 ) ) === false ) {
 			throw new \Aimeos\MShop\Exception( sprintf( 'Search configuration for "%1$s" not available', $entry['code'] ) );
 		}
+
+		$this->plugins[$this->prefix . 'key'] = new \Aimeos\MW\Criteria\Plugin\Cut();
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Common\Item\Property\Iface New property item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values[$this->prefix . 'siteid'] = $this->getContext()->getLocale()->getSiteId();
-
-		if( $type !== null )
-		{
-			$values[$this->prefix . 'typeid'] = $this->getTypeId( $type, $domain );
-			$values[$this->prefix . 'type'] = $type;
-		}
-
 		return $this->createItemBase( $values );
 	}
 
@@ -133,18 +127,19 @@ abstract class Base
 			$stmt = $conn->create( $this->getSqlConfig( $this->getConfigPath() . $type ) );
 
 			$stmt->bind( 1, $item->getParentId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 2, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 3, $item->getLanguageId() );
-			$stmt->bind( 4, $item->getValue() );
-			$stmt->bind( 5, $date ); //mtime
-			$stmt->bind( 6, $context->getEditor() );
-			$stmt->bind( 7, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 2, $this->plugins[$this->prefix . 'key']->translate( $item->getKey() ) );
+			$stmt->bind( 3, $item->getType() );
+			$stmt->bind( 4, $item->getLanguageId() );
+			$stmt->bind( 5, $item->getValue() );
+			$stmt->bind( 6, $date ); //mtime
+			$stmt->bind( 7, $context->getEditor() );
+			$stmt->bind( 8, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 			if( $id !== null ) {
-				$stmt->bind( 8, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+				$stmt->bind( 9, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 				$item->setId( $id ); //is not modified anymore
 			} else {
-				$stmt->bind( 8, $date ); //ctime
+				$stmt->bind( 9, $date ); //ctime
 			}
 
 			$stmt->execute()->finish();
@@ -173,7 +168,8 @@ abstract class Base
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Common\Manager\Property\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -184,7 +180,7 @@ abstract class Base
 	/**
 	 * Returns product property item with given Id.
 	 *
-	 * @param integer $id Id of the product property item
+	 * @param string $id Id of the product property item
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Common\Item\Property\Iface Returns the product property item of the given id
@@ -206,7 +202,7 @@ abstract class Base
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$items = $map = $typeIds = [];
+		$items = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -215,22 +211,15 @@ abstract class Base
 
 		try
 		{
-			$domain = explode( '.', $this->prefix );
-
-			if( ( $topdomain = array_shift( $domain ) ) === null ) {
-				throw new \Aimeos\MShop\Exception( 'No configuration available.' );
-			}
-
 			$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
 			$cfgPathSearch = $this->getConfigPath() . 'search';
 			$cfgPathCount = $this->getConfigPath() . 'count';
 			$required = array( trim( $this->prefix, '.' ) );
 
 			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
-			while( ( $row = $results->fetch() ) !== false )
-			{
-				$map[ $row[$this->prefix . 'id'] ] = $row;
-				$typeIds[ $row[$this->prefix . 'typeid'] ] = null;
+
+			while( ( $row = $results->fetch() ) !== false ) {
+				$items[$row[$this->prefix . 'id']] = $this->createItemBase( $row );
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -239,26 +228,6 @@ abstract class Base
 		{
 			$dbm->release( $conn, $dbname );
 			throw $e;
-		}
-
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', $this->prefix . 'type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[ $row[$this->prefix . 'typeid'] ] ) )
-				{
-					$row[$this->prefix . 'type'] = $typeItems[ $row[$this->prefix . 'typeid'] ]->getCode();
-					$row[$this->prefix . 'typename'] = $typeItems[ $row[$this->prefix . 'typeid'] ]->getName();
-				}
-
-				$items[$id] = $this->createItemBase( $row );
-			}
 		}
 
 		return $items;
@@ -304,7 +273,6 @@ abstract class Base
 	protected function createItemBase( array $values = [] )
 	{
 		$values['languageid'] = $this->languageId;
-
 		return new \Aimeos\MShop\Common\Item\Property\Standard( $this->prefix, $values );
 	}
 

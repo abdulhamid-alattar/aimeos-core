@@ -54,7 +54,7 @@ class DemoAddServiceData extends \Aimeos\MW\Setup\Task\MShopAddDataAbstract
 		}
 
 
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'service' );
+		$manager = \Aimeos\MShop::create( $context, 'service' );
 
 		$search = $manager->createSearch();
 		$search->setConditions( $search->compare( '=~', 'service.code', 'demo-' ) );
@@ -82,7 +82,7 @@ class DemoAddServiceData extends \Aimeos\MW\Setup\Task\MShopAddDataAbstract
 			foreach( $data as $entry )
 			{
 				$item = $manager->createItem();
-				$item->setTypeId( $this->getTypeId( 'service/type', 'service', $entry['type'] ) );
+				$item->setType( $entry['type'] );
 				$item->setCode( $entry['code'] );
 				$item->setLabel( $entry['label'] );
 				$item->setProvider( $entry['provider'] );

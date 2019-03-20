@@ -14,9 +14,6 @@ namespace Aimeos\MW\Setup\Task;
  */
 class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 {
-	private $typeIds = [];
-
-
 	public function __construct( \Aimeos\MW\Setup\DBSchema\Iface $schema, \Aimeos\MW\DB\Connection\Iface $conn, $additional = null )
 	{
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $additional );
@@ -55,9 +52,7 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 		$this->msg( 'Adding attribute performance data', 0 );
 
 
-		$this->init();
-
-		$manager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
+		$manager = \Aimeos\MShop::create( $this->additional, 'attribute' );
 		$manager->begin();
 
 		$this->addCharacteristics();
@@ -92,13 +87,13 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 		];
 
 
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
+		$attrManager = \Aimeos\MShop::create( $this->additional, 'attribute' );
 
 		foreach( $characteristics as $type => $list )
 		{
 			$attrItem = $attrManager->createItem()
-				->setTypeId( $this->getTypeId( 'attribute/type', 'product', $type ) )
 				->setDomain( 'product' )
+				->setType( $type )
 				->setStatus( 1 );
 
 			foreach( $list as $pos => $value )
@@ -144,19 +139,21 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 		);
 
 
-		$mediaManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'media' );
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
-		$listManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute/lists' );
+		$mediaManager = \Aimeos\MShop::create( $this->additional, 'media' );
+		$attrManager = \Aimeos\MShop::create( $this->additional, 'attribute' );
+		$listManager = \Aimeos\MShop::create( $this->additional, 'attribute/lists' );
 
-		$attrItem = $attrManager->createItem( 'color', 'product' )
+		$attrItem = $attrManager->createItem()
 			->setDomain( 'product' )
+			->setType( 'color' )
 			->setStatus( 1 );
 
-		$mediaItem = $mediaManager->createItem( 'icon', 'attribute')
+		$mediaItem = $mediaManager->createItem()
 			->setMimeType( 'image/svg+xml' )
+			->setType( 'icon' )
 			->setStatus( 1 );
 
-		$listItem = $listManager->createItem( 'default', 'media' );
+		$listItem = $listManager->createItem()->setType( 'default' );
 		$pos = 0;
 
 		foreach( $colors as $code => $name )
@@ -180,19 +177,21 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 
 	protected function addOptions()
 	{
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'price' );
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
-		$listManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute/lists' );
+		$priceManager = \Aimeos\MShop::create( $this->additional, 'price' );
+		$attrManager = \Aimeos\MShop::create( $this->additional, 'attribute' );
+		$listManager = \Aimeos\MShop::create( $this->additional, 'attribute/lists' );
 
-		$priceItem = $priceManager->createItem( 'default', 'attribute' )
+		$priceItem = $priceManager->createItem()
 			->setTaxRate( '20.00' )
+			->setType( 'default' )
 			->setStatus( 1 );
 
-		$attrItem = $attrManager->createItem( 'sticker', 'product' )
+		$attrItem = $attrManager->createItem()
 			->setDomain( 'product' )
+			->setType( 'sticker' )
 			->setStatus( 1 );
 
-		$listItem = $listManager->createItem( 'default', 'price' );
+		$listItem = $listManager->createItem()->setType( 'sticker' );
 		$pos = 0;
 
 		foreach( ['small sticker' => '+2.50', 'large sticker' => '+7.50'] as $option => $price )
@@ -209,7 +208,6 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 
 			$attrManager->saveItem( $item );
 		}
-
 	}
 
 
@@ -226,13 +224,13 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 		];
 
 
-		$attrManager = \Aimeos\MShop\Factory::createManager( $this->additional, 'attribute' );
+		$attrManager = \Aimeos\MShop::create( $this->additional, 'attribute' );
 
 		foreach( $sizes as $type => $list )
 		{
 			$attrItem = $attrManager->createItem()
-				->setTypeId( $this->getTypeId( 'attribute/type', 'product', $type ) )
 				->setDomain( 'product' )
+				->setType( $type )
 				->setStatus( 1 );
 
 			foreach( $list as $pos => $value )
@@ -243,39 +241,6 @@ class AttributeAddPerfData extends \Aimeos\MW\Setup\Task\Base
 					->setCode( $value );
 
 				$attrManager->saveItem( $item );
-			}
-		}
-	}
-
-
-	protected function getTypeId( $path, $domain, $code )
-	{
-		if( !isset( $this->typeIds[$path][$domain][$code] ) )
-		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->additional, $path );
-
-			$item = $manager->createItem();
-			$item->setDomain( $domain );
-			$item->setLabel( $code );
-			$item->setCode( $code );
-			$item->setStatus( 1 );
-
-			$this->typeIds[$path][$domain][$code] = $manager->saveItem( $item )->getId();
-		}
-
-		return $this->typeIds[$path][$domain][$code];
-	}
-
-
-	protected function init()
-	{
-		foreach( ['attribute/type', 'attribute/lists/type', 'media/type', 'price/type'] as $path )
-		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->additional, $path );
-			$search = $manager->createSearch()->setSlice( 0, 0x7fffffff );
-
-			foreach( $manager->searchItems( $search ) as $id => $item ) {
-				$this->typeIds[$path][$item->getDomain()][$item->getCode()] = $id;
 			}
 		}
 	}

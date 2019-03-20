@@ -21,7 +21,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$this->context = \TestHelperMShop::getContext();
 		$this->editor = $this->context->getEditor();
-		$manager = \Aimeos\MShop\Catalog\Manager\Factory::createManager( $this->context, 'Standard' );
+		$manager = \Aimeos\MShop\Catalog\Manager\Factory::create( $this->context, 'Standard' );
 		$this->object = $manager->getSubManager( 'lists', 'Standard' );
 	}
 
@@ -34,7 +34,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
@@ -43,7 +43,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$search = $this->object->createSearch( true );
 		$expr = array(
 			$search->getConditions(),
-			$search->compare( '==', 'catalog.lists.editor', 'core:unittest' ),
+			$search->compare( '==', 'catalog.lists.editor', 'core:lib/mshoplib' ),
 		);
 		$search->setConditions( $search->combine( '&&', $expr ) );
 
@@ -64,7 +64,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$results = $this->object->searchItems( $search );
 
 		if( ( $item = reset( $results ) ) === false ) {
@@ -72,16 +72,12 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		}
 
 		$this->assertEquals( $item, $this->object->getItem( $item->getId() ) );
-		$this->assertNotEquals( '', $item->getTypeName() );
 	}
 
 
 	public function testGetResourceType()
 	{
-		$result = $this->object->getResourceType();
-
-		$this->assertContains( 'catalog/lists', $result );
-		$this->assertContains( 'catalog/lists/type', $result );
+		$this->assertContains( 'catalog/lists', $this->object->getResourceType() );
 	}
 
 
@@ -130,7 +126,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getId(), $itemSaved->getId() );
 		$this->assertEquals( $item->getSiteId(), $itemSaved->getSiteId() );
 		$this->assertEquals( $item->getParentId(), $itemSaved->getParentId() );
-		$this->assertEquals( $item->getTypeId(), $itemSaved->getTypeId() );
+		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getRefId(), $itemSaved->getRefId() );
 		$this->assertEquals( $item->getDomain(), $itemSaved->getDomain() );
 		$this->assertEquals( $item->getDateStart(), $itemSaved->getDateStart() );
@@ -145,7 +141,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getId(), $itemUpd->getId() );
 		$this->assertEquals( $itemExp->getSiteId(), $itemUpd->getSiteId() );
 		$this->assertEquals( $itemExp->getParentId(), $itemUpd->getParentId() );
-		$this->assertEquals( $itemExp->getTypeId(), $itemUpd->getTypeId() );
+		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getRefId(), $itemUpd->getRefId() );
 		$this->assertEquals( $itemExp->getDomain(), $itemUpd->getDomain() );
 		$this->assertEquals( $itemExp->getDateStart(), $itemUpd->getDateStart() );
@@ -164,89 +160,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testMoveItemLastToFront()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first catalog list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last catalog list item' );
-		}
-
-		$this->object->moveItem( $last->getId(), $first->getId() );
-
-		$newFirst = $this->object->getItem( $last->getId() );
-		$newSecond = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $last->getId() );
-
-		$this->assertEquals( 1, $newFirst->getPosition() );
-		$this->assertEquals( 2, $newSecond->getPosition() );
-	}
-
-
-	public function testMoveItemFirstToLast()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first catalog list item' );
-		}
-
-		if( ( $second = next( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No second catalog list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last catalog list item' );
-		}
-
-		$this->object->moveItem( $first->getId() );
-
-		$newBefore = $this->object->getItem( $last->getId() );
-		$newLast = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $first->getId(), $second->getId() );
-
-		$this->assertEquals( $last->getPosition() - 1, $newBefore->getPosition() );
-		$this->assertEquals( $last->getPosition(), $newLast->getPosition() );
-	}
-
-
-	public function testMoveItemFirstUp()
-	{
-		$listItems = $this->getListItems();
-		$this->assertGreaterThan( 1, count( $listItems ) );
-
-		if( ( $first = reset( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No first catalog list item' );
-		}
-
-		if( ( $second = next( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No second catalog list item' );
-		}
-
-		if( ( $last = end( $listItems ) ) === false ) {
-			throw new \RuntimeException( 'No last catalog list item' );
-		}
-
-		$this->object->moveItem( $first->getId(), $last->getId() );
-
-		$newLast = $this->object->getItem( $last->getId() );
-		$newUp = $this->object->getItem( $first->getId() );
-
-		$this->object->moveItem( $first->getId(), $second->getId() );
-
-		$this->assertEquals( $last->getPosition() - 1, $newUp->getPosition() );
-		$this->assertEquals( $last->getPosition(), $newLast->getPosition() );
-	}
-
-
 	public function testSearchItems()
 	{
 		$search = $this->object->createSearch();
@@ -256,7 +169,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '!=', 'catalog.lists.siteid', null );
 		$expr[] = $search->compare( '!=', 'catalog.lists.parentid', null );
 		$expr[] = $search->compare( '==', 'catalog.lists.domain', 'product' );
-		$expr[] = $search->compare( '!=', 'catalog.lists.typeid', null );
+		$expr[] = $search->compare( '==', 'catalog.lists.type', 'new' );
 		$expr[] = $search->compare( '>', 'catalog.lists.refid', 0 );
 		$expr[] = $search->compare( '==', 'catalog.lists.datestart', '2010-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'catalog.lists.dateend', '2099-01-01 00:00:00' );
@@ -267,16 +180,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '>=', 'catalog.lists.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'catalog.lists.editor', $this->editor );
 
-		$expr[] = $search->compare( '!=', 'catalog.lists.type.id', null );
-		$expr[] = $search->compare( '!=', 'catalog.lists.type.siteid', null );
-		$expr[] = $search->compare( '==', 'catalog.lists.type.code', 'new' );
-		$expr[] = $search->compare( '==', 'catalog.lists.type.domain', 'product' );
-		$expr[] = $search->compare( '>', 'catalog.lists.type.label', '' );
-		$expr[] = $search->compare( '==', 'catalog.lists.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'catalog.lists.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'catalog.lists.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'catalog.lists.type.editor', $this->editor );
-
 		$total = 0;
 		$search->setConditions( $search->combine( '&&', $expr ) );
 		$search->setSlice( 0, 1 );
@@ -284,8 +187,11 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$this->assertEquals( 1, count( $results ) );
 		$this->assertEquals( 2, $total );
+	}
 
-		//search with base criteria
+
+	public function testSearchItemsBase()
+	{
 		$search = $this->object->createSearch( true );
 		$conditions = array(
 			$search->compare( '==', 'catalog.lists.editor', $this->editor ),
@@ -298,33 +204,5 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		foreach( $results as $itemId => $item ) {
 			$this->assertEquals( $itemId, $item->getId() );
 		}
-	}
-
-
-	protected function getListItems()
-	{
-		$manager = \Aimeos\MShop\Catalog\Manager\Factory::createManager( $this->context, 'Standard' );
-
-		$search = $manager->createSearch();
-		$search->setConditions( $search->compare( '==', 'catalog.code', 'cafe' ) );
-		$search->setSlice( 0, 1 );
-
-		$results = $manager->searchItems( $search );
-
-		if( ( $item = reset( $results ) ) === false ) {
-			throw new \RuntimeException( 'No catalog item found' );
-		}
-
-		$search = $this->object->createSearch();
-		$expr = array(
-			$search->compare( '==', 'catalog.lists.parentid', $item->getId() ),
-			$search->compare( '==', 'catalog.lists.domain', 'text' ),
-			$search->compare( '==', 'catalog.lists.editor', $this->editor ),
-			$search->compare( '==', 'catalog.lists.type.code', 'unittype1' ),
-		);
-		$search->setConditions( $search->combine( '&&', $expr ) );
-		$search->setSortations( array( $search->sort( '+', 'catalog.lists.position' ) ) );
-
-		return $this->object->searchItems( $search );
 	}
 }

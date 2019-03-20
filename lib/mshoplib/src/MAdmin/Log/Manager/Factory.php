@@ -29,7 +29,7 @@ class Factory
 	 * @param string|null $name Manager name
 	 * @return \Aimeos\MAdmin\Log\Manager\Iface Log manager object
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** madmin/log/manager/name
 		 * Class name of the used log manager implementation
@@ -77,7 +77,7 @@ class Factory
 		$iface = \Aimeos\MAdmin\Log\Manager\Iface::class;
 		$classname = '\Aimeos\MAdmin\Log\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** madmin/log/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the log manager

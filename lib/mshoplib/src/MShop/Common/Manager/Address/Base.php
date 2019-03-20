@@ -55,12 +55,10 @@ abstract class Base
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Common\Item\Address\Iface New address item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values[$this->prefix . 'siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -70,7 +68,8 @@ abstract class Base
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Common\Manager\Address\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -81,7 +80,7 @@ abstract class Base
 	/**
 	 * Returns the common address item object specificed by its ID.
 	 *
-	 * @param integer $id Unique common address ID referencing an existing address
+	 * @param string $id Unique common address ID referencing an existing address
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Common\Item\Address\Iface Returns the address item of the given id
@@ -122,12 +121,7 @@ abstract class Base
 		{
 			$id = $item->getId();
 			$date = date( 'Y-m-d H:i:s' );
-
-			if( $id === null ) {
-				$type = 'insert';
-			} else {
-				$type = 'update';
-			}
+			$type = ( $id === null ? 'insert' : 'update' );
 
 			$stmt = $this->getCachedStatement( $conn, $this->getConfigPath() . $type );
 
@@ -201,13 +195,7 @@ abstract class Base
 
 		try
 		{
-			$domain = explode( '.', $this->prefix );
-
-			if( ( $topdomain = array_shift( $domain ) ) === null ) {
-				throw new \Aimeos\MShop\Exception( 'No configuration available.' );
-			}
-
-			$required = array( trim( $this->prefix, '.' ) );
+			$required = [trim( $this->prefix, '.' )];
 			$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
 			$cfgPathSearch = $this->getConfigPath() . 'search';
 			$cfgPathCount = $this->getConfigPath() . 'count';

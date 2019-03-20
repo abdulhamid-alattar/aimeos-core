@@ -21,18 +21,7 @@ class SubscriptionAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'OrderAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['OrderAddTestData'];
 	}
 
 
@@ -44,7 +33,7 @@ class SubscriptionAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding subscription test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'subscription.php';
@@ -67,7 +56,7 @@ class SubscriptionAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	protected function addData( array $testdata )
 	{
-		$subscriptionManager = \Aimeos\MShop\Subscription\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$subscriptionManager = \Aimeos\MShop\Subscription\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$subscriptionManager->begin();
 
@@ -95,11 +84,11 @@ class SubscriptionAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 * Returns the order product ID for the given test data key
 	 *
 	 * @param string $key Test data key
-	 * @return \MShop\Order\Item\Base\Product\Iface Order product item
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Order product item
 	 */
 	protected function getOrderProductItem( $key )
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->additional, 'Standard' )
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( $this->additional, 'Standard' )
 			->getSubManager( 'base', 'Standard' )->getSubManager( 'product', 'Standard' );
 
 		$parts = explode( '/', $key );

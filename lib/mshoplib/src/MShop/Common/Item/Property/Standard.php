@@ -41,6 +41,17 @@ class Standard
 
 
 	/**
+	 * Returns the unique key of the property item
+	 *
+	 * @return string Unique key consisting of type/language/value
+	 */
+	public function getKey()
+	{
+		return $this->getType() . '|' . ( $this->getLanguageId() ?: 'null' ) . '|' . $this->getValue();
+	}
+
+
+	/**
 	 * Returns the language ID of the property item.
 	 *
 	 * @return string|null Language ID of the property item
@@ -118,42 +129,16 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
-	 *
-	 * @return string|null Localized name of the type
-	 */
-	public function getTypeName()
-	{
-		if( isset( $this->values[$this->prefix . 'typename'] ) ) {
-			return (string) $this->values[$this->prefix . 'typename'];
-		}
-	}
-
-
-	/**
-	 * Returns the type id of the property item
-	 *
-	 * @return string|null Type of the property item
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values[$this->prefix . 'typeid'] ) ) {
-			return (string) $this->values[$this->prefix . 'typeid'];
-		}
-	}
-
-
-	/**
 	 * Sets the new type of the property item
 	 *
-	 * @param string $id Type of the property item
+	 * @param string $type Type of the property item
 	 * @return \Aimeos\MShop\Common\Item\Property\Iface Common property item for chaining method calls
 	 */
-	public function setTypeId( $id )
+	public function setType( $type )
 	{
-		if( (string) $id !== $this->getTypeId() )
+		if( (string) $type !== $this->getType() )
 		{
-			$this->values[$this->prefix . 'typeid'] = (string) $id;
+			$this->values[$this->prefix . 'type'] = (string) $type;
 			$this->setModified();
 		}
 
@@ -218,31 +203,32 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Common\Item\Property\Iface Property item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
-		unset( $list[$this->prefix . 'type'], $list[$this->prefix . 'typename'] );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case $this->prefix . 'parentid': $this->setParentId( $value ); break;
-				case $this->prefix . 'typeid': $this->setTypeId( $value ); break;
-				case $this->prefix . 'languageid': $this->setLanguageId( $value ); break;
-				case $this->prefix . 'value': $this->setValue( $value ); break;
-				default: $unknown[$key] = $value;
+				case $this->prefix . 'parentid': !$private ?: $item = $item->setParentId( $value ); break;
+				case $this->prefix . 'languageid': $item = $item->setLanguageId( $value ); break;
+				case $this->prefix . 'value': $item = $item->setValue( $value ); break;
+				case $this->prefix . 'type': $item = $item->setType( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -256,15 +242,14 @@ class Standard
 	{
 		$list = parent::toArray( $private );
 
-		$list[$this->prefix . 'typename'] = $this->getTypeName();
 		$list[$this->prefix . 'languageid'] = $this->getLanguageId();
 		$list[$this->prefix . 'value'] = $this->getValue();
 		$list[$this->prefix . 'type'] = $this->getType();
 
 		if( $private === true )
 		{
+			$list[$this->prefix . 'key'] = $this->getKey();
 			$list[$this->prefix . 'parentid'] = $this->getParentId();
-			$list[$this->prefix . 'typeid'] = $this->getTypeId();
 		}
 
 		return $list;

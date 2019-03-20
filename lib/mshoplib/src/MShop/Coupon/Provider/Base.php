@@ -23,7 +23,7 @@ abstract class Base implements Iface
 	private $context;
 	private $object;
 	private $item;
-	private $code = '';
+	private $code;
 
 	/**
 	 * Initializes the coupon model.
@@ -39,34 +39,6 @@ abstract class Base implements Iface
 		$this->code = $code;
 	}
 
-
-	/**
-	 * Updates the result of a coupon to the order base instance.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Basic order of the customer
-	 */
-	public function updateCoupon( \Aimeos\MShop\Order\Item\Base\Iface $base )
-	{
-		if( $this->getObject()->isAvailable( $base ) !== true )
-		{
-			$base->deleteCoupon( $this->code );
-			return;
-		}
-
-		$this->deleteCoupon( $base );
-		$this->addCoupon( $base );
-	}
-
-
-	/**
-	 * Removes the result of a coupon from the order base instance.
-	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Basic order of the customer
-	 */
-	public function deleteCoupon( \Aimeos\MShop\Order\Item\Base\Iface $base )
-	{
-		$base->deleteCoupon( $this->code, true );
-	}
 
 	/**
 	 * Checks the backend configuration attributes for validity.
@@ -122,88 +94,17 @@ abstract class Base implements Iface
 
 
 	/**
-	 * Checks required fields and the types of the config array.
+	 * Checks required fields and the types of the given data map
 	 *
-	 * @param array $config Config parameters
-	 * @param array $attributes Attributes for the config array
+	 * @param array $criteria Multi-dimensional associative list of criteria configuration
+	 * @param array $map Values to check agains the criteria
 	 * @return array An array with the attribute keys as key and an error message as values for all attributes that are
 	 * 	known by the provider but aren't valid resp. null for attributes whose values are OK
 	 */
-	protected function checkConfig( array $config, array $attributes )
+	protected function checkConfig( array $criteria, array $map )
 	{
-		$errors = [];
-
-		foreach( $config as $key => $def )
-		{
-			if( $def['required'] === true && ( !isset( $attributes[$key] ) || $attributes[$key] === '' ) )
-			{
-				$errors[$key] = sprintf( 'Configuration for "%1$s" is missing', $key );
-				continue;
-			}
-
-			if( isset( $attributes[$key] ) )
-			{
-				switch( $def['type'] )
-				{
-					case 'boolean':
-						if( !is_string( $attributes[$key] ) || $attributes[$key] !== '0' && $attributes[$key] !== '1' ) {
-							$errors[$key] = sprintf( 'Not a true/false value' ); continue 2;
-						}
-						break;
-					case 'string':
-						if( is_string( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not a string' ); continue 2;
-						}
-						break;
-					case 'integer':
-						if( ctype_digit( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not an integer number' ); continue 2;
-						}
-						break;
-					case 'number':
-						if( is_numeric( $attributes[$key] ) === false ) {
-							$errors[$key] = sprintf( 'Not a number' ); continue 2;
-						}
-						break;
-					case 'date':
-						$pattern = '/^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a date' ); continue 2;
-						}
-						break;
-					case 'datetime':
-						$pattern = '/^[0-9]{4}-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9](:[0-5][0-9])?$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a date and time' ); continue 2;
-						}
-						break;
-					case 'time':
-						$pattern = '/^([0-2])?[0-9]:[0-5][0-9](:[0-5][0-9])?$/';
-						if( !is_string( $attributes[$key] ) || preg_match( $pattern, $attributes[$key] ) !== 1 ) {
-							$errors[$key] = sprintf( 'Not a time' ); continue 2;
-						}
-						break;
-					case 'select':
-						if( !is_array( $def['default'] ) || !isset( $def['default'][$attributes[$key]] )
-							&& !in_array( $attributes[$key], $def['default'] )
-						) {
-							$errors[$key] = sprintf( 'Not a listed value' ); continue 2;
-						}
-						break;
-					case 'map':
-						if( !is_array( $attributes[$key] ) ) {
-							$errors[$key] = sprintf( 'Not a key/value map' ); continue 2;
-						}
-						break;
-					default:
-						throw new \Aimeos\MShop\Coupon\Exception( sprintf( 'Invalid type "%1$s"', $def['type'] ) );
-				}
-			}
-
-			$errors[$key] = null;
-		}
-
-		return $errors;
+		$helper = new \Aimeos\MShop\Common\Helper\Config\Standard( $this->getConfigItems( $criteria ) );
+		return $helper->check( $map );
 	}
 
 
@@ -244,13 +145,7 @@ abstract class Base implements Iface
 	 */
 	protected function getConfigValue( $key, $default = null )
 	{
-		$config = $this->item->getConfig();
-
-		if( isset( $config[$key] ) ) {
-			return $config[$key];
-		}
-
-		return $default;
+		return $this->item->getConfigValue( $key, $default );
 	}
 
 
@@ -270,7 +165,7 @@ abstract class Base implements Iface
 	 *
 	 * @return \Aimeos\MShop\Coupon\Item\Iface Coupon item
 	 */
-	protected function getItemBase()
+	protected function getItem()
 	{
 		return $this->item;
 	}
@@ -292,67 +187,57 @@ abstract class Base implements Iface
 
 
 	/**
-	 * Creates an order product from the product item.
+	 * Creates an order product for the given product code
 	 *
-	 * @param string $productCode Unique product code
-	 * @param integer $quantity Number of products in basket
-	 * @param string $stockType Unique code of the stock type the product is from
-	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Ordered product
+	 * @param string $prodcode Unique product code
+	 * @param integer $quantity Number of products
+	 * @param string $stocktype Unique stock type code for the order product
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface Order product
 	 */
-	protected function createProduct( $productCode, $quantity = 1, $stockType = 'default' )
+	protected function createProduct( $prodcode, $quantity = 1, $stocktype = 'default' )
 	{
-		$productManager = \Aimeos\MShop\Factory::createManager( $this->context, 'product' );
-		$product = $productManager->findItem( $productCode, ['text', 'media', 'price'] );
+		$productManager = \Aimeos\MShop::create( $this->context, 'product' );
+		$product = $productManager->findItem( $prodcode, ['text', 'media', 'price'] );
 
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->context, 'price' );
+		$priceManager = \Aimeos\MShop::create( $this->context, 'price' );
 		$prices = $product->getRefItems( 'price', 'default', 'default' );
 
-		if( empty( $prices ) ) {
-			$price = $priceManager->createItem();
-		} else {
+		if( !empty( $prices ) ) {
 			$price = $priceManager->getLowestPrice( $prices, $quantity );
+		} else {
+			$price = $priceManager->createItem();
 		}
 
-		$orderBaseProductManager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/product' );
-		$orderProduct = $orderBaseProductManager->createItem();
-
-		$orderProduct->copyFrom( $product );
-		$orderProduct->setQuantity( $quantity );
-		$orderProduct->setStockType( $stockType );
-		$orderProduct->setPrice( $price );
-		$orderProduct->setFlags( \Aimeos\MShop\Order\Item\Base\Product\Base::FLAG_IMMUTABLE );
-
-		return $orderProduct;
+		return \Aimeos\MShop::create( $this->context, 'order/base/product' )->createItem()
+			->copyFrom( $product )->setQuantity( $quantity )->setStockType( $stocktype )->setPrice( $price )
+			->setFlags( \Aimeos\MShop\Order\Item\Base\Product\Base::FLAG_IMMUTABLE );
 	}
 
 
 	/**
 	 * Creates the order products for monetary rebates.
 	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface Basket object
-	 * @param string $productCode Unique product code
+	 * @param \Aimeos\MShop\Order\Item\Base\Iface $base Basket object
+	 * @param string $prodcode Unique product code
 	 * @param float $rebate Rebate amount that should be granted, will contain the remaining rebate if not fully used
 	 * @param integer $quantity Number of products in basket
 	 * @param string $stockType Unique code of the stock type the product is from
 	 * @return \Aimeos\MShop\Order\Item\Base\Product\Iface[] Order products with monetary rebates
 	 */
-	protected function createMonetaryRebateProducts( \Aimeos\MShop\Order\Item\Base\Iface $base,
-		$productCode, &$rebate, $quantity = 1, $stockType = 'default' )
+	protected function createRebateProducts( \Aimeos\MShop\Order\Item\Base\Iface $base,
+		$prodcode, &$rebate, $quantity = 1, $stockType = 'default' )
 	{
-		$orderProducts = [];
 		$prices = $this->getPriceByTaxRate( $base );
-
+		$orderProducts = [];
 		krsort( $prices );
 
-		if( empty( $prices ) )
-		{
-			$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' );
-			$prices = array( '0.00' => $manager->createItem() );
+		if( empty( $prices ) ) {
+			$prices = ['0.00' => \Aimeos\MShop::create( $this->getContext(), 'price' )->createItem()];
 		}
 
 		foreach( $prices as $taxrate => $price )
 		{
-			if( abs( $rebate ) < 0.01 ) {
+			if( $rebate < 0.01 ) {
 				break;
 			}
 
@@ -366,16 +251,11 @@ abstract class Base implements Iface
 				$value = $rebate; $rebate = 0;
 			}
 
-			$orderProduct = $this->createProduct( $productCode, $quantity, $stockType );
+			$orderProduct = $this->createProduct( $prodcode, $quantity, $stockType );
+			$price = $orderProduct->getPrice()->setTaxRate( $taxrate )
+				->setValue( -$value )->setRebate( $value );
 
-			$price = $orderProduct->getPrice();
-			$price->setValue( -$value );
-			$price->setRebate( $value );
-			$price->setTaxRate( $taxrate );
-
-			$orderProduct->setPrice( $price );
-
-			$orderProducts[] = $orderProduct;
+			$orderProducts[] = $orderProduct->setPrice( $price );
 		}
 
 		return $orderProducts;
@@ -386,48 +266,32 @@ abstract class Base implements Iface
 	 * Returns a list of tax rates and their price items for the given basket.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Basket containing the products, services, etc.
-	 * @return array Associative list of tax rates as key and corresponding price items as value
+	 * @return \Aimeos\MShop\Price\Item\Iface[] Associative list of tax rates as key and price items as values
 	 */
 	protected function getPriceByTaxRate( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
 		$taxrates = [];
-		$manager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' );
+		$manager = \Aimeos\MShop::create( $this->getContext(), 'price' );
 
 		foreach( $basket->getProducts() as $product )
 		{
 			$price = $product->getPrice();
 			$taxrate = $price->getTaxRate();
+			$newPrice = isset( $taxrates[$taxrate] ) ? $taxrates[$taxrate] : $manager->createItem();
 
-			if( !isset( $taxrates[$taxrate] ) ) {
-				$taxrates[$taxrate] = $manager->createItem();
-			}
-
-			$taxrates[$taxrate]->addItem( $price, $product->getQuantity() );
+			$taxrates[$taxrate] = $newPrice->addItem( $price, $product->getQuantity() );
 		}
 
-		foreach( $basket->getService( 'delivery' ) as $service )
+		foreach( $basket->getServices() as $services )
 		{
-			$price = clone $service->getPrice();
-			$taxrate = $price->getTaxRate();
+			foreach( $services as $service )
+			{
+				$price = $service->getPrice();
+				$taxrate = $price->getTaxRate();
+				$newPrice = isset( $taxrates[$taxrate] ) ? $taxrates[$taxrate] : $manager->createItem();
 
-			if( !isset( $taxrates[$taxrate] ) ) {
-				$taxrates[$taxrate] = $manager->createItem();
+				$taxrates[$taxrate] = $newPrice->addItem( $price );
 			}
-
-			$taxrates[$taxrate]->addItem( $price );
-
-		}
-
-		foreach( $basket->getService( 'payment' ) as $service )
-		{
-			$price = clone $service->getPrice();
-			$taxrate = $price->getTaxRate();
-
-			if( !isset( $taxrates[$taxrate] ) ) {
-				$taxrates[$taxrate] = $manager->createItem();
-			}
-
-			$taxrates[$taxrate]->addItem( $price );
 		}
 
 		return $taxrates;

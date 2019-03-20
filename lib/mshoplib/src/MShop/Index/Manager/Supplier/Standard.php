@@ -83,7 +83,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
 	 * @param string $key Search key (usually the ID) to aggregate products for
-	 * @return array List of ID values as key and the number of counted products as value
+	 * @return integer[] List of ID values as key and the number of counted products as value
 	 */
 	public function aggregate( \Aimeos\MW\Criteria\Iface $search, $key )
 	{
@@ -94,13 +94,14 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		parent::cleanup( $siteids );
 
-		$this->cleanupBase( $siteids, 'mshop/index/manager/supplier/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/index/manager/supplier/standard/delete' );
 	}
 
 
@@ -109,6 +110,7 @@ class Standard
 	 * This can be a long lasting operation.
 	 *
 	 * @param string $timestamp Timestamp in ISO format (YYYY-MM-DD HH:mm:ss)
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanupIndex( $timestamp )
 	{
@@ -142,14 +144,15 @@ class Standard
 		 * @see mshop/index/manager/supplier/standard/insert/ansi
 		 * @see mshop/index/manager/supplier/standard/search/ansi
 		 */
-		$this->cleanupIndexBase( $timestamp, 'mshop/index/manager/supplier/standard/cleanup' );
+		return $this->cleanupIndexBase( $timestamp, 'mshop/index/manager/supplier/standard/cleanup' );
 	}
 
 
 	/**
 	 * Removes multiple items from the index.
 	 *
-	 * @param array $ids list of Product IDs
+	 * @param string[] $ids List of Product IDs
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -182,7 +185,7 @@ class Standard
 		 * @see mshop/index/manager/supplier/standard/insert/ansi
 		 * @see mshop/index/manager/supplier/standard/search/ansi
 		 */
-		$this->deleteItemsBase( $ids, 'mshop/index/manager/supplier/standard/delete' );
+		return $this->deleteItemsBase( $ids, 'mshop/index/manager/supplier/standard/delete' );
 	}
 
 
@@ -190,7 +193,7 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
@@ -229,9 +232,7 @@ class Standard
 		 */
 		$path = 'mshop/index/manager/supplier/submanagers';
 
-		$list += $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
-
-		return $list;
+		return $list + $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -364,6 +365,8 @@ class Standard
 	 * Optimizes the index if necessary.
 	 * Execution of this operation can take a very long time and shouldn't be
 	 * called through a web server enviroment.
+	 *
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function optimize()
 	{
@@ -392,7 +395,7 @@ class Standard
 		 * @see mshop/index/manager/supplier/standard/search/ansi
 		 * @see mshop/index/manager/supplier/standard/aggregate/ansi
 		 */
-		$this->optimizeBase( 'mshop/index/manager/supplier/standard/optimize' );
+		return $this->optimizeBase( 'mshop/index/manager/supplier/standard/optimize' );
 	}
 
 
@@ -401,16 +404,16 @@ class Standard
 	 * This can be a long lasting operation.
 	 *
 	 * @param \Aimeos\MShop\Product\Item\Iface[] $items Associative list of product IDs as keys and items as values
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function rebuildIndex( array $items = [] )
 	{
-		if( empty( $items ) ) { return; }
+		if( empty( $items ) ) { return $this; }
 
 		\Aimeos\MW\Common\Base::checkClassList( \Aimeos\MShop\Product\Item\Iface::class, $items );
 
 		$date = date( 'Y-m-d H:i:s' );
 		$context = $this->getContext();
-		$editor = $context->getEditor();
 		$siteid = $context->getLocale()->getSiteId();
 		$listItems = $this->getListItems( $items );
 
@@ -483,10 +486,11 @@ class Standard
 			throw $e;
 		}
 
-
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->rebuildIndex( $items );
 		}
+
+		return $this;
 	}
 
 
@@ -615,13 +619,13 @@ class Standard
 	/**
 	 * Returns the list items referencing the given products
 	 *
-	 * @param array $items List of product items implementing \Aimeos\MShop\Product\Item\Iface
+	 * @param \Aimeos\MShop\Product\Item\Iface[] $items List of product items
 	 * @return array Associative list of product IDs as keys and lists of list items as values
 	 */
 	protected function getListItems( array $items )
 	{
 		$listItems = [];
-		$listManager = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'supplier/lists' );
+		$listManager = \Aimeos\MShop::create( $this->getContext(), 'supplier/lists' );
 
 		$search = $listManager->createSearch( true )->setSlice( 0, 0x7FFFFFFF );
 		$expr = array(
@@ -644,7 +648,7 @@ class Standard
 	/**
 	 * Returns the list of sub-managers available for the index supplier manager.
 	 *
-	 * @return array Associative list of the sub-domain as key and the manager object as value
+	 * @return \Aimeos\MShop\Index\Manager\Iface Associative list of the sub-domain as key and the manager object as value
 	 */
 	protected function getSubManagers()
 	{

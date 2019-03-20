@@ -30,22 +30,19 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
 	public function testCreateItem()
 	{
-		$item = $this->object->createItem();
-		$this->assertInstanceOf( \Aimeos\MShop\Common\Item\Property\Iface::class, $item );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Item\Property\Iface::class, $this->object->createItem() );
 	}
 
 
 	public function testCreateItemType()
 	{
-		$item = $this->object->createItem( 'htmlcolor', 'attribute' );
-
-		$this->assertNotNull( $item->getTypeId() );
+		$item = $this->object->createItem( ['attribute.property.type' => 'htmlcolor'] );
 		$this->assertEquals( 'htmlcolor', $item->getType() );
 	}
 
@@ -86,7 +83,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getId(), $itemSaved->getId() );
 		$this->assertEquals( $item->getParentId(), $itemSaved->getParentId() );
 		$this->assertEquals( $item->getSiteId(), $itemSaved->getSiteId() );
-		$this->assertEquals( $item->getTypeId(), $itemSaved->getTypeId() );
+		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getLanguageId(), $itemSaved->getLanguageId() );
 		$this->assertEquals( $item->getValue(), $itemSaved->getValue() );
 
@@ -98,7 +95,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getId(), $itemUpd->getId() );
 		$this->assertEquals( $itemExp->getParentId(), $itemUpd->getParentId() );
 		$this->assertEquals( $itemExp->getSiteId(), $itemUpd->getSiteId() );
-		$this->assertEquals( $itemExp->getTypeId(), $itemUpd->getTypeId() );
+		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getLanguageId(), $itemUpd->getLanguageId() );
 		$this->assertEquals( $itemExp->getValue(), $itemUpd->getValue() );
 
@@ -116,7 +113,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$conditions = array(
 			$search->compare( '~=', 'attribute.property.value', '1024'),
 			$search->compare( '==', 'attribute.property.editor', $this->editor )
@@ -129,7 +126,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		}
 
 		$actual = $this->object->getItem( $expected->getId() );
-		$this->assertNotEquals( '', $actual->getTypeName() );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -139,7 +135,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$result = $this->object->getResourceType();
 
 		$this->assertContains( 'attribute/property', $result );
-		$this->assertContains( 'attribute/property/type', $result );
 	}
 
 
@@ -160,41 +155,14 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$expr[] = $search->compare( '!=', 'attribute.property.id', null );
 		$expr[] = $search->compare( '!=', 'attribute.property.parentid', null );
 		$expr[] = $search->compare( '!=', 'attribute.property.siteid', null );
-		$expr[] = $search->compare( '!=', 'attribute.property.typeid', null );
+		$expr[] = $search->compare( '==', 'attribute.property.type', 'size' );
 		$expr[] = $search->compare( '==', 'attribute.property.languageid', null );
 		$expr[] = $search->compare( '==', 'attribute.property.value', '1024' );
 		$expr[] = $search->compare( '==', 'attribute.property.editor', $this->editor );
 
-		$expr[] = $search->compare( '!=', 'attribute.property.type.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.property.type.siteid', null );
-		$expr[] = $search->compare( '==', 'attribute.property.type.domain', 'attribute' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.code', 'size' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.label', 'Size' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'attribute.property.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'attribute.property.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.editor', $this->editor );
-
 		$search->setConditions( $search->combine('&&', $expr) );
 		$results = $this->object->searchItems( $search, [], $total );
 		$this->assertEquals( 1, count( $results ) );
-
-
-		$search = $this->object->createSearch();
-		$conditions = array(
-			$search->compare( '=~', 'attribute.property.type.code', '' ),
-			$search->compare( '==', 'attribute.property.editor', $this->editor )
-		);
-		$search->setConditions( $search->combine( '&&', $conditions ) );
-		$search->setSlice(0, 1);
-		$items = $this->object->searchItems( $search, [], $total );
-
-		$this->assertEquals( 1, count( $items ) );
-		$this->assertEquals( 3, $total );
-
-		foreach($items as $itemId => $item) {
-			$this->assertEquals( $itemId, $item->getId() );
-		}
 	}
 
 

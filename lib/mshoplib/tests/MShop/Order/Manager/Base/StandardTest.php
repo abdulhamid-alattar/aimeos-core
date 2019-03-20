@@ -35,7 +35,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregate()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.rebate' );
 
 		$this->assertEquals( 3, count( $result ) );
@@ -47,7 +47,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateAvg()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.address.email', 'order.base.price', 'avg' );
 
 		$this->assertEquals( 1, count( $result ) );
@@ -59,7 +59,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregateSum()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.address.email', 'order.base.price', 'sum' );
 
 		$this->assertEquals( 1, count( $result ) );
@@ -70,7 +70,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -96,7 +102,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$search->setConditions( $search->compare( '==', 'order.base.costs', '1.50' ) );
 		$results = $this->object->searchItems( $search );
 
@@ -163,7 +169,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getCoupons(), $itemSaved->getCoupons() );
 		$this->assertEquals( $item->getServices(), $itemSaved->getServices() );
 		$this->assertEquals( $item->getComment(), $itemSaved->getComment() );
-		$this->assertEquals( $item->getStatus(), $itemSaved->getStatus() );
 		$this->assertEquals( $item->getSiteCode(), $itemSaved->getSiteCode() );
 
 		$this->assertEquals( $this->editor, $itemSaved->getEditor() );
@@ -184,7 +189,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getCoupons(), $itemUpd->getCoupons() );
 		$this->assertEquals( $itemExp->getServices(), $itemUpd->getServices() );
 		$this->assertEquals( $itemExp->getComment(), $itemUpd->getComment() );
-		$this->assertEquals( $itemExp->getStatus(), $itemUpd->getStatus() );
 		$this->assertEquals( $itemExp->getSiteCode(), $itemUpd->getSiteCode() );
 
 		$this->assertEquals( $this->editor, $itemUpd->getEditor() );
@@ -411,11 +415,14 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$order = $this->object->load( $item->getId() );
 
 
-		foreach( $order->getAddresses() as $address )
+		foreach( $order->getAddresses() as $addresses )
 		{
-			$this->assertInternalType( 'string', $address->getId() );
-			$this->assertNotEquals( '', $address->getId() );
-			$this->assertInternalType( 'string', $address->getBaseId() );
+			foreach( $addresses as $address )
+			{
+				$this->assertInternalType( 'string', $address->getId() );
+				$this->assertNotEquals( '', $address->getId() );
+				$this->assertInternalType( 'string', $address->getBaseId() );
+			}
 		}
 
 		$this->assertEquals( 2, count( $order->getCoupons() ) );
@@ -517,10 +524,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$this->assertEquals( 0, count( $order->getCoupons() ) );
 
-		foreach( $order->getAddresses() as $address )
+		foreach( $order->getAddresses() as $list )
 		{
-			$this->assertEquals( null, $address->getId() );
-			$this->assertEquals( null, $address->getBaseId() );
+			foreach( $list as $address )
+			{
+				$this->assertEquals( null, $address->getId() );
+				$this->assertEquals( null, $address->getBaseId() );
+			}
 		}
 
 		foreach( $order->getProducts() as $product )
@@ -665,8 +675,11 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$newAddresses = $newBasket->getAddresses();
 
-		foreach( $basket->getAddresses() as $key => $address ) {
-			$this->assertEquals( $address->getId(), $newAddresses[$key]->getId() );
+		foreach( $basket->getAddresses() as $key => $list )
+		{
+			foreach( $list as $pos => $address ) {
+				$this->assertEquals( $address->getId(), $newAddresses[$key][$pos]->getId() );
+			}
 		}
 
 		$newProducts = $newBasket->getProducts();
@@ -825,16 +838,16 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( 0, count( $basket->getCoupons() ) );
 
 		$basket->addCoupon( 'CDEF' );
-		$basket->addCoupon( '5678', $basket->getProducts() );
+		$basket->addCoupon( '90AB' );
 		$this->assertEquals( 2, count( $basket->getCoupons() ) );
 
 		$this->object->store( $basket );
 		$newBasket = $this->object->load( $basket->getId() );
 		$this->object->deleteItem( $newBasket->getId() );
 
-		$this->assertEquals( '1344.00', $newBasket->getPrice()->getValue() );
-		$this->assertEquals( '64.00', $newBasket->getPrice()->getCosts() );
-		$this->assertEquals( '5.00', $newBasket->getPrice()->getRebate() );
+		$this->assertEquals( '601.60', $newBasket->getPrice()->getValue() );
+		$this->assertEquals( '32.00', $newBasket->getPrice()->getCosts() );
+		$this->assertEquals( '70.40', $newBasket->getPrice()->getRebate() );
 		$this->assertEquals( 2, count( $newBasket->getCoupons() ) );
 	}
 

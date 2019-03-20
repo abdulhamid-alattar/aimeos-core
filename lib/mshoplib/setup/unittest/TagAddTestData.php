@@ -23,18 +23,7 @@ class TagAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -46,7 +35,7 @@ class TagAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding tag test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'tag.php';
@@ -68,10 +57,9 @@ class TagAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addTagData( array $testdata )
 	{
-		$tagManager = \Aimeos\MShop\Tag\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$tagManager = \Aimeos\MShop\Tag\Manager\Factory::create( $this->additional, 'Standard' );
 		$tagTypeManager = $tagManager->getSubManager( 'type', 'Standard' );
 
-		$typeIds = [];
 		$typeItem = $tagTypeManager->createItem();
 
 		$tagManager->begin();
@@ -85,21 +73,16 @@ class TagAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$typeItem->setStatus( $dataset['status'] );
 
 			$tagTypeManager->saveItem( $typeItem );
-			$typeIds[$key] = $typeItem->getId();
 		}
 
 		$tagItem = $tagManager->createItem();
 		foreach( $testdata['tag'] as $key => $dataset )
 		{
-			if( !isset( $typeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No tag type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$tagItem->setId( null );
 			$tagItem->setDomain( $dataset['domain'] );
 			$tagItem->setLanguageId( $dataset['langid'] );
-			$tagItem->setTypeId( $typeIds[$dataset['typeid']] );
 			$tagItem->setLabel( $dataset['label'] );
+			$tagItem->setType( $dataset['type'] );
 
 			$tagManager->saveItem( $tagItem, false );
 		}

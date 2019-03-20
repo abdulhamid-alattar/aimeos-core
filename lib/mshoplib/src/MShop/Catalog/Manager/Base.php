@@ -18,8 +18,11 @@ namespace Aimeos\MShop\Catalog\Manager;
  * @package MShop
  * @subpackage Catalog
  */
-abstract class Base extends \Aimeos\MShop\Common\Manager\ListRef\Base
+abstract class Base extends \Aimeos\MShop\Common\Manager\Base
 {
+	use \Aimeos\MShop\Common\Manager\ListRef\Traits;
+
+
 	private $searchConfig;
 	private $filter = [];
 	private $treeManagers = [];
@@ -183,7 +186,7 @@ abstract class Base extends \Aimeos\MShop\Common\Manager\ListRef\Base
 	/**
 	 * Creates an object for managing the nested set.
 	 *
-	 * @param integer $siteid Site ID for the specific tree
+	 * @param string $siteid Site ID for the specific tree
 	 * @return \Aimeos\MW\Tree\Manager\Iface Tree manager
 	 */
 	protected function createTreeManager( $siteid )
@@ -589,7 +592,7 @@ abstract class Base extends \Aimeos\MShop\Common\Manager\ListRef\Base
 				),
 			);
 
-			$this->treeManagers[$siteid] = \Aimeos\MW\Tree\Factory::createManager( 'DBNestedSet', $treeConfig, $dbm );
+			$this->treeManagers[$siteid] = \Aimeos\MW\Tree\Factory::create( 'DBNestedSet', $treeConfig, $dbm );
 		}
 
 		return $this->treeManagers[$siteid];

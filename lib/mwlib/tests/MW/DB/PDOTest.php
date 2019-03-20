@@ -501,7 +501,7 @@ class PDOTest extends \PHPUnit\Framework\TestCase
 		{
 			$conn->create( $sql, 123 );
 		}
-		catch (\Aimeos\MW\DB\Exception $e)
+		catch ( \Aimeos\MW\DB\Exception $e )
 		{
 			$this->object->release( $conn );
 			throw $e;
@@ -527,6 +527,6 @@ class PDOTest extends \PHPUnit\Framework\TestCase
 	public function testFactoryFail()
 	{
 		$this->setExpectedException( \Aimeos\MW\DB\Exception::class );
-		\Aimeos\MW\DB\Factory::createManager( \TestHelperMw::getConfig(), 'notDefined' );
+		\Aimeos\MW\DB\Factory::create( \TestHelperMw::getConfig(), 'notDefined' );
 	}
 }

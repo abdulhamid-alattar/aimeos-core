@@ -22,18 +22,7 @@ class ServiceAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class ServiceAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding service test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'service.php';
@@ -68,10 +57,9 @@ class ServiceAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addServiceData( array $testdata )
 	{
-		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::create( $this->additional, 'Standard' );
 		$serviceTypeManager = $serviceManager->getSubManager( 'type', 'Standard' );
 
-		$typeIds = [];
 		$type = $serviceTypeManager->createItem();
 
 		$serviceManager->begin();
@@ -85,19 +73,14 @@ class ServiceAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$type->setStatus( $dataset['status'] );
 
 			$serviceTypeManager->saveItem( $type );
-			$typeIds[$key] = $type->getId();
 		}
 
 		$parent = $serviceManager->createItem();
 
 		foreach( $testdata['service'] as $key => $dataset )
 		{
-			if( !isset( $typeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No service type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$parent->setId( null );
-			$parent->setTypeId( $typeIds[$dataset['typeid']] );
+			$parent->setType( $dataset['type'] );
 			$parent->setPosition( $dataset['pos'] );
 			$parent->setCode( $dataset['code'] );
 			$parent->setLabel( $dataset['label'] );

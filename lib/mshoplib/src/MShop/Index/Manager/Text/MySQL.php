@@ -59,8 +59,8 @@ class MySQL
 			if( isset( $params[1] ) )
 			{
 				$str = '';
-				$list = ['-', '+', '>', '<', '(', ')', '~', '*', ':', '"', '&', '|', '!', '/', '§', '$', '%', '{', '}', '[', ']', '=', '?', '\\', '\'', '#', ';', '.', ',', '@'];
-				$search = str_replace( $list, ' ', $params[1] );
+				$regex = '/(\-|\+|\>|\<|\(|\)|\~|\*|\:|\"|\@|\\| )+/';
+				$search = trim( preg_replace( $regex, ' ', $params[1] ), "' \t\n\r\0\x0B" );
 
 				foreach( explode( ' ', $search ) as $part )
 				{
@@ -71,7 +71,7 @@ class MySQL
 					}
 				}
 
-				$params[1] = '\'' . $str . '\'';
+				$params[1] = '\'' . str_replace( '\'', '\'\'', $str ) . '\'';
 			}
 
 			return $params;
@@ -86,7 +86,7 @@ class MySQL
 	 * Returns a list of objects describing the available criterias for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attriubte items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{

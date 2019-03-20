@@ -18,9 +18,10 @@ namespace Aimeos\MShop\Attribute\Manager;
  * @subpackage Attribute
  */
 class Standard
-	extends \Aimeos\MShop\Common\Manager\ListRef\Base
+	extends \Aimeos\MShop\Common\Manager\Base
 	implements \Aimeos\MShop\Attribute\Manager\Iface, \Aimeos\MShop\Common\Manager\Factory\Iface
 {
+	use \Aimeos\MShop\Common\Manager\ListRef\Traits;
 	use \Aimeos\MShop\Common\Manager\PropertyRef\Traits;
 
 
@@ -41,12 +42,20 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'attribute.typeid' => array(
-			'code' => 'attribute.typeid',
-			'internalcode' => 'matt."typeid"',
+		'attribute.key' => array(
+			'code' => 'attribute.key',
+			'internalcode' => 'matt."key"',
+			'label' => 'Unique key',
+			'type' => 'string',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
+			'public' => false,
+		),
+		'attribute.type' => array(
+			'code' => 'attribute.type',
+			'internalcode' => 'matt."type"',
 			'label' => 'Type',
 			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 			'public' => false,
 		),
 		'attribute.label' => array(
@@ -109,7 +118,31 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 			'public' => false,
 		),
+		'attribute:has' => array(
+			'code' => 'attribute:has()',
+			'internalcode' => '(
+				SELECT mattli_has."id" FROM mshop_attribute_list AS mattli_has
+				WHERE matt."id" = mattli_has."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Attribute has list item, parameter(<domain>[,<list type>[,<reference ID>)]]',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
+		'attribute:prop' => array(
+			'code' => 'attribute:prop()',
+			'internalcode' => '(
+				SELECT mattpr_prop."id" FROM mshop_attribute_property AS mattpr_prop
+				WHERE matt."id" = mattpr_prop."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Attribute has property item, parameter(<property type>[,<language code>[,<property value>]])',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
 	);
+
+	private $plugins = [];
 
 
 	/**
@@ -121,13 +154,60 @@ class Standard
 	{
 		parent::__construct( $context );
 		$this->setResourceName( 'db-attribute' );
+
+		$this->plugins['attribute.key'] = new \Aimeos\MW\Criteria\Plugin\Cut();
+
+		$self = $this;
+		$locale = $context->getLocale();
+
+		$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
+		$level = $context->getConfig()->get( 'mshop/attribute/manager/sitemode', $level );
+
+		$siteIds = [$locale->getSiteId()];
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_PATH ) {
+			$siteIds = array_merge( $siteIds, $locale->getSitePath() );
+		}
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_SUBTREE ) {
+			$siteIds = array_merge( $siteIds, $locale->getSiteSubTree() );
+		}
+
+
+		$this->searchConfig['attribute:has']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'mattli_has."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'mattli_has."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
+
+
+		$this->searchConfig['attribute:prop']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'mattpr_prop."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'mattpr_prop."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
 	}
 
 
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Attribute\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -138,7 +218,7 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/attribute/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/attribute/manager/standard/delete' );
 	}
 
 
@@ -146,12 +226,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/attribute/manager/submanagers';
-		$default = ['lists', 'property', 'type'];
+		$default = ['lists', 'property'];
 
 		return $this->getResourceTypeBase( 'attribute', $path, $default, $withsub );
 	}
@@ -161,7 +241,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -183,30 +263,20 @@ class Standard
 		 * @category Developer
 		 */
 		$path = 'mshop/attribute/manager/submanagers';
-		$default = ['lists', 'property', 'type'];
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, $default, $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Attribute\Item\Iface New attribute item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['attribute.siteid'] = $this->getContext()->getLocale()->getSiteId();
-
-		if( $type !== null )
-		{
-			$values['attribute.typeid'] = $this->getTypeId( $type, $domain );
-			$values['attribute.type'] = $type;
-		}
-
 		return $this->createItemBase( $values );
 	}
 
@@ -219,15 +289,14 @@ class Standard
 	 * @param string|null $domain Domain of the item if necessary to identify the item uniquely
 	 * @param string|null $type Type code of the item if necessary to identify the item uniquely
 	 * @param boolean $default True to add default criteria
-	 * @return \Aimeos\MShop\Common\Item\Iface Item object
+	 * @return \Aimeos\MShop\Attribute\Item\Iface Attribute item object
 	 */
 	public function findItem( $code, array $ref = [], $domain = null, $type = null, $default = false )
 	{
 		$find = array(
 			'attribute.code' => $code,
 			'attribute.domain' => $domain,
-			'attribute.type.code' => $type,
-			'attribute.type.domain' => $domain,
+			'attribute.type' => $type,
 		);
 		return $this->findItemBase( $find, $ref, $default );
 	}
@@ -236,7 +305,7 @@ class Standard
 	/**
 	 * Returns the attributes item specified by its ID.
 	 *
-	 * @param integer $id Unique ID of the attribute item in the storage
+	 * @param string $id Unique ID of the attribute item in the storage
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Attribute\Item\Iface Returns the attribute item of the given id
@@ -251,10 +320,9 @@ class Standard
 	/**
 	 * Saves an attribute item to the storage.
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item Attribute item
+	 * @param \Aimeos\MShop\Attribute\Item\Iface $item Attribute item
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
-	 * @throws \Aimeos\MShop\Attribute\Exception If Attribute couldn't be saved
+	 * @return \Aimeos\MShop\Attribute\Item\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -355,21 +423,22 @@ class Standard
 
 			$stmt = $this->getCachedStatement( $conn, $path );
 
-			$stmt->bind( 1, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 2, $item->getDomain() );
-			$stmt->bind( 3, $item->getCode() );
-			$stmt->bind( 4, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 5, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
-			$stmt->bind( 6, $item->getLabel() );
-			$stmt->bind( 7, $date ); // mtime
-			$stmt->bind( 8, $context->getEditor() );
-			$stmt->bind( 9, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 1, $this->plugins['attribute.key']->translate( $item->getKey() ) );
+			$stmt->bind( 2, $item->getType() );
+			$stmt->bind( 3, $item->getDomain() );
+			$stmt->bind( 4, $item->getCode() );
+			$stmt->bind( 5, $item->getStatus(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 6, $item->getPosition(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 7, $item->getLabel() );
+			$stmt->bind( 8, $date ); // mtime
+			$stmt->bind( 9, $context->getEditor() );
+			$stmt->bind( 10, $context->getLocale()->getSiteId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 
 			if( $id !== null ) {
-				$stmt->bind( 10, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+				$stmt->bind( 11, $id, \Aimeos\MW\DB\Statement\Base::PARAM_INT );
 				$item->setId( $id );
 			} else {
-				$stmt->bind( 10, $date ); // ctime
+				$stmt->bind( 11, $date ); // ctime
 			}
 
 			$stmt->execute()->finish();
@@ -432,7 +501,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Attribute\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -467,7 +537,8 @@ class Standard
 		 * @see mshop/attribute/manager/standard/count/ansi
 		 */
 		$path = 'mshop/attribute/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -477,11 +548,11 @@ class Standard
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param integer|null &$total Number of items that are available in total
-	 * @return array List of attribute items implementing \Aimeos\MShop\Attribute\Item\Iface
+	 * @return \Aimeos\MShop\Attribute\Item\Iface[] List of attribute items
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$map = $typeIds = [];
+		$map = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -636,12 +707,10 @@ class Standard
 			 */
 			$cfgPathCount = 'mshop/attribute/manager/standard/count';
 
-			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
+			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level, $this->plugins );
 
-			while( ( $row = $results->fetch() ) !== false )
-			{
+			while( ( $row = $results->fetch() ) !== false ) {
 				$map[$row['attribute.id']] = $row;
-				$typeIds[$row['attribute.typeid']] = null;
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -652,24 +721,6 @@ class Standard
 			throw $e;
 		}
 
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', 'attribute.type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[$row['attribute.typeid']] ) )
-				{
-					$map[$id]['attribute.type'] = $typeItems[$row['attribute.typeid']]->getCode();
-					$map[$id]['attribute.typename'] = $typeItems[$row['attribute.typeid']]->getName();
-				}
-			}
-		}
-
 		$propItems = $this->getPropertyItems( array_keys( $map ), 'attribute' );
 
 		return $this->buildItems( $map, null, 'attribute', $propItems );
@@ -677,10 +728,10 @@ class Standard
 
 
 	/**
-	 * creates a search object and sets base criteria
+	 * Creates a search object
 	 *
-	 * @param boolean $default
-	 * @return \Aimeos\MW\Criteria\Iface
+	 * @param boolean $default Add default criteria (optional)
+	 * @return \Aimeos\MW\Criteria\Iface New search criteria object
 	 */
 	public function createSearch( $default = false )
 	{
@@ -709,9 +760,9 @@ class Standard
 	 * Creates a new attribute item instance.
 	 *
 	 * @param array $values Associative list of key/value pairs
-	 * @param array $listItems List of items implementing \Aimeos\MShop\Common\Item\Lists\Iface
-	 * @param array $refItems List of items implementing \Aimeos\MShop\Text\Item\Iface
-	 * @param array $propertyItems List of items implementing \Aimeos\MShop\Common\Item\Property\Iface
+	 * @param \Aimeos\MShop\Common\Item\Lists\Iface[] $listItems List of list items
+	 * @param \Aimeos\MShop\Common\Item\Iface[] $refItems List of referenced items
+	 * @param \Aimeos\MShop\Common\Item\Property\Iface[] $propertyItems List of property items
 	 * @return \Aimeos\MShop\Attribute\Item\Iface New attribute item
 	 */
 	protected function createItemBase( array $values = [], array $listItems = [],

@@ -25,7 +25,6 @@ class Standard
 		'catalog.lists.type.id' => array(
 			'code' => 'catalog.lists.type.id',
 			'internalcode' => 'mcatlity."id"',
-			'internaldeps'=>array( 'LEFT JOIN "mshop_catalog_list_type" as mcatlity ON ( mcatli."typeid" = mcatlity."id" )' ),
 			'label' => 'List type ID',
 			'type' => 'integer',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
@@ -116,7 +115,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param array $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Catalog\Manager\Lists\Type\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -125,7 +125,7 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/catalog/manager/lists/type/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/catalog/manager/lists/type/standard/delete' );
 	}
 
 
@@ -133,12 +133,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/catalog/manager/lists/type/submanagers';
-
 		return $this->getResourceTypeBase( 'catalog/lists/type', $path, [], $withsub );
 	}
 
@@ -147,7 +146,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also catalogs of sub-managers if true
-	 * @return array List of catalog items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{

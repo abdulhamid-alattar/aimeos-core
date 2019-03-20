@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::create( \TestHelperMShop::getContext() );
 
 		$attributeListManager = $attributeManager->getSubManager( 'lists' );
 		$this->object = $attributeListManager->getSubManager( 'type' );
@@ -34,28 +34,25 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
 	public function testGetResourceType()
 	{
-		$result = $this->object->getResourceType();
-
-		$this->assertContains( 'attribute/lists/type', $result );
+		$this->assertContains( 'attribute/lists/type', $this->object->getResourceType() );
 	}
 
 
 	public function testCreateItem()
 	{
-		$item = $this->object->createItem();
-		$this->assertInstanceOf( \Aimeos\MShop\Common\Item\Type\Iface::class, $item );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Item\Type\Iface::class, $this->object->createItem() );
 	}
 
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$results = $this->object->searchItems( $search );
 
 		if( ( $expected = reset( $results ) ) === false ) {

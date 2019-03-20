@@ -82,7 +82,7 @@ class SQL implements \Aimeos\MW\Criteria\Expression\Combine\Iface
 	 *
 	 * @param array $types Associative list of variable or column names as keys and their corresponding types
 	 * @param array $translations Associative list of variable or column names that should be translated
-	 * @param array $plugins Associative list of item names and plugins implementing \Aimeos\MW\Criteria\Plugin\Iface
+	 * @param \Aimeos\MW\Criteria\Plugin\Iface[] $plugins Associative list of item names as keys and plugins objects as values
 	 * @param array $funcs Associative list of item names and functions modifying the conditions
 	 * @return mixed Expression that evaluates to a boolean result
 	 */
@@ -94,15 +94,17 @@ class SQL implements \Aimeos\MW\Criteria\Expression\Combine\Iface
 
 		$string = $item->toSource( $types, $translations, $plugins, $funcs );
 
-		if( $this->operator == '!' && $string !== '' ) {
+		if( $this->operator == '!' && $string !== '' && $string !== null ) {
 			return ' ' . self::$operators[$this->operator] . ' ' . $string;
 		}
 
 		while( ( $item = next( $this->expressions ) ) !== false )
 		{
-			if( ( $itemstr = $item->toSource( $types, $translations, $plugins, $funcs ) ) !== '' )
+			$itemstr = $item->toSource( $types, $translations, $plugins, $funcs );
+
+			if( $itemstr !== '' && $itemstr !== null )
 			{
-				if( $string !== '' ) {
+				if( $string !== '' && $string !== null ) {
 					$string .= ' ' . self::$operators[$this->operator] . ' ' . $itemstr;
 				} else {
 					$string = $itemstr;
@@ -110,7 +112,7 @@ class SQL implements \Aimeos\MW\Criteria\Expression\Combine\Iface
 			}
 		}
 
-		return '( ' . $string . ' )';
+		return $string ? '( ' . $string . ' )' : '';
 	}
 
 

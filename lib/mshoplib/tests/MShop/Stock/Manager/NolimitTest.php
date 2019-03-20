@@ -26,6 +26,18 @@ class NolimitTest extends \PHPUnit\Framework\TestCase
 	}
 
 
+	public function testCleanup()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
+	}
+
+
 	public function testFindItem()
 	{
 		$item = $this->object->findItem( 'CNC', [], 'product', 'default' );
@@ -51,12 +63,8 @@ class NolimitTest extends \PHPUnit\Framework\TestCase
 	public function testSearchItems()
 	{
 		$total = 0;
-		$search = $this->object->createSearch();
-
-		$expr[] = $search->compare( '==', 'stock.productcode', ['abc', 'def', 'ghi'] );
-
+		$search = $this->object->createSearch()->setSlice( 0, 2 );
 		$search->setConditions( $search->compare( '==', 'stock.productcode', ['abc', 'def', 'ghi'] ) );
-		$search->setSlice( 0, 2 );
 		$results = $this->object->searchItems( $search, [], $total );
 
 		$this->assertEquals( 2, count( $results ) );

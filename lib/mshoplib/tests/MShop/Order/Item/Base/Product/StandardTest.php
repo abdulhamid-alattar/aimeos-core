@@ -24,7 +24,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	protected function setUp()
 	{
-		$this->price = \Aimeos\MShop\Price\Manager\Factory::createManager( \TestHelperMShop::getContext() )->createItem();
+		$this->price = \Aimeos\MShop\Price\Manager\Factory::create( \TestHelperMShop::getContext() )->createItem();
 
 		$attrValues = array(
 			'order.base.product.attribute.id' => 4,
@@ -43,7 +43,8 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->values = array(
 			'order.base.product.id' => 1,
 			'order.base.product.siteid' => 99,
-			'order.base.product.ordprodid' => 10,
+			'order.base.product.orderproductid' => 10,
+			'order.base.product.orderaddressid' => 11,
 			'order.base.product.type' => 'bundle',
 			'order.base.product.productid' => 100,
 			'order.base.product.baseid' => 42,
@@ -82,10 +83,9 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCompareFail()
 	{
-		$price = clone $this->price;
-		$price->setValue( '1.00' );
+		$this->values['order.base.product.stocktype'] = 'default';
 
-		$product = new \Aimeos\MShop\Order\Item\Base\Product\Standard( $price, $this->values, $this->attribute, $this->subProducts );
+		$product = new \Aimeos\MShop\Order\Item\Base\Product\Standard( $this->price, $this->values, $this->attribute, $this->subProducts );
 		$this->assertFalse( $this->object->compare( $product ) );
 	}
 
@@ -142,6 +142,27 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 		$this->assertInstanceOf( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $return );
 		$this->assertEquals( null, $this->object->getOrderProductId() );
+		$this->assertTrue( $this->object->isModified() );
+	}
+
+	public function testGetOrderAddressId()
+	{
+		$this->assertEquals( 11, $this->object->getOrderAddressId() );
+	}
+
+
+	public function testSetOrderAddressId()
+	{
+		$return = $this->object->setOrderAddressId( 1011 );
+
+		$this->assertInstanceOf( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $return );
+		$this->assertEquals( 1011, $this->object->getOrderAddressId() );
+		$this->assertTrue( $this->object->isModified() );
+
+		$return = $this->object->setOrderAddressId( null );
+
+		$this->assertInstanceOf( \Aimeos\MShop\Order\Item\Base\Product\Iface::class, $return );
+		$this->assertEquals( null, $this->object->getOrderAddressId() );
 		$this->assertTrue( $this->object->isModified() );
 	}
 
@@ -421,7 +442,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetAttribute()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$attrItem001 = $attManager->createItem();
@@ -457,7 +478,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetAttributeList()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$attrItem001 = $attManager->createItem();
@@ -480,7 +501,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetAttributeItem()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$attrItem001 = $attManager->createItem();
@@ -516,7 +537,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetAttributeItemList()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$attrItem001 = $attManager->createItem();
@@ -554,7 +575,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSetAttributeItem()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$item = $attManager->createItem();
@@ -585,7 +606,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSetAttributeItems()
 	{
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$attManager = $manager->getSubManager( 'base' )->getSubManager( 'product' )->getSubManager( 'attribute' );
 
 		$list = array(
@@ -630,10 +651,12 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$item = new \Aimeos\MShop\Order\Item\Base\Product\Standard( new \Aimeos\MShop\Price\Item\Standard() );
 
-		$list = array(
+		$list = $entries = array(
 			'order.base.product.id' => 1,
 			'order.base.product.baseid' => 2,
 			'order.base.product.siteid' => 123,
+			'order.base.product.orderproductid' => 10,
+			'order.base.product.orderaddressid' => 11,
 			'order.base.product.productid' => 3,
 			'order.base.product.prodcode' => 'test',
 			'order.base.product.name' => 'test item',
@@ -652,13 +675,14 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 			'order.base.product.taxrate' => '20.00',
 		);
 
-		$unknown = $item->fromArray( $list );
+		$item = $item->fromArray( $entries, true );
 
-		$this->assertEquals( [], $unknown );
-
+		$this->assertEquals( [], $entries );
 		$this->assertEquals( $list['order.base.product.id'], $item->getId() );
 		$this->assertEquals( $list['order.base.product.baseid'], $item->getBaseId() );
 		$this->assertEquals( $list['order.base.product.siteid'], $item->getSiteId() );
+		$this->assertEquals( $list['order.base.product.orderproductid'], $item->getOrderProductId() );
+		$this->assertEquals( $list['order.base.product.orderaddressid'], $item->getOrderAddressId() );
 		$this->assertEquals( $list['order.base.product.productid'], $item->getProductId() );
 		$this->assertEquals( $list['order.base.product.prodcode'], $item->getProductCode() );
 		$this->assertEquals( $list['order.base.product.name'], $item->getName() );
@@ -685,6 +709,8 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $this->object->getId(), $arrayObject['order.base.product.id'] );
 		$this->assertEquals( $this->object->getSiteId(), $arrayObject['order.base.product.siteid'] );
 		$this->assertEquals( $this->object->getBaseId(), $arrayObject['order.base.product.baseid'] );
+		$this->assertEquals( $this->object->getOrderProductId(), $arrayObject['order.base.product.orderproductid'] );
+		$this->assertEquals( $this->object->getOrderAddressId(), $arrayObject['order.base.product.orderaddressid'] );
 		$this->assertEquals( $this->object->getStockType(), $arrayObject['order.base.product.stocktype'] );
 		$this->assertEquals( $this->object->getSupplierCode(), $arrayObject['order.base.product.suppliercode'] );
 		$this->assertEquals( $this->object->getProductId(), $arrayObject['order.base.product.productid'] );
@@ -715,7 +741,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$productCopy = new \Aimeos\MShop\Order\Item\Base\Product\Standard( $this->price );
 
-		$manager = \Aimeos\MShop\Product\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$manager = \Aimeos\MShop\Product\Manager\Factory::create( \TestHelperMShop::getContext() );
 		$search = $manager->createSearch();
 		$search->setConditions( $search->compare( '==', 'product.code', 'CNE' ) );
 		$products = $manager->searchItems( $search, ['text'] );

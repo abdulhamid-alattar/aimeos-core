@@ -184,51 +184,28 @@ return array(
 						WHERE :cond AND siteid = ?
 					'
 				),
-				'getposmax' => array(
-					'ansi' => '
-						SELECT MAX( "pos" ) AS pos
-						FROM "mshop_supplier_list"
-						WHERE "siteid" = ? AND "parentid" = ? AND "typeid" = ?
-							AND "domain" = ?
-					'
-				),
 				'insert' => array(
 					'ansi' => '
 						INSERT INTO "mshop_supplier_list" (
-							"parentid", "typeid", "domain", "refid", "start", "end",
+							"parentid", "key", "type", "domain", "refid", "start", "end",
 							"config", "pos", "status", "mtime", "editor", "siteid", "ctime"
 						) VALUES (
-							?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+							?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 						)
 					'
 				),
 				'update' => array(
 					'ansi' => '
 						UPDATE "mshop_supplier_list"
-						SET "parentid" = ?, "typeid" = ?, "domain" = ?, "refid" = ?, "start" = ?, "end" = ?,
+						SET "parentid" = ?, "key" = ?, "type" = ?, "domain" = ?, "refid" = ?, "start" = ?, "end" = ?,
 							"config" = ?, "pos" = ?, "status" = ?, "mtime" = ?, "editor" = ?
 						WHERE "siteid" = ? AND "id" = ?
-					'
-				),
-				'updatepos' => array(
-					'ansi' => '
-						UPDATE "mshop_supplier_list"
-						SET "pos" = ?, "mtime" = ?, "editor" = ?
-						WHERE "siteid" = ? AND "id" = ?
-					'
-				),
-				'move' => array(
-					'ansi' => '
-						UPDATE "mshop_supplier_list"
-						SET "pos" = "pos" + ?, "mtime" = ?, "editor" = ?
-						WHERE "siteid" = ? AND "parentid" = ? AND "typeid" = ?
-							AND "domain" = ? AND "pos" >= ?
 					'
 				),
 				'search' => array(
 					'ansi' => '
 						SELECT msupli."id" AS "supplier.lists.id", msupli."parentid" AS "supplier.lists.parentid",
-							msupli."siteid" AS "supplier.lists.siteid", msupli."typeid" AS "supplier.lists.typeid",
+							msupli."siteid" AS "supplier.lists.siteid", msupli."type" AS "supplier.lists.type",
 							msupli."domain" AS "supplier.lists.domain", msupli."refid" AS "supplier.lists.refid",
 							msupli."start" AS "supplier.lists.datestart", msupli."end" AS "supplier.lists.dateend",
 							msupli."config" AS "supplier.lists.config", msupli."pos" AS "supplier.lists.position",
@@ -237,7 +214,7 @@ return array(
 						FROM "mshop_supplier_list" AS msupli
 						:joins
 						WHERE :cond
-						GROUP BY msupli."id", msupli."parentid", msupli."siteid", msupli."typeid",
+						GROUP BY msupli."id", msupli."parentid", msupli."siteid", msupli."type",
 							msupli."domain", msupli."refid", msupli."start", msupli."end",
 							msupli."config", msupli."pos", msupli."status", msupli."mtime",
 							msupli."editor", msupli."ctime" /*-columns*/ , :columns /*columns-*/

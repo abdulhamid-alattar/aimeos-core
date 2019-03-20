@@ -25,10 +25,10 @@ interface Iface
 	 *
 	 * @param \Aimeos\MW\Observer\Listener\Iface $l Object implementing listener interface
 	 * @param string $action Name of the action to listen for
-	 * @return void
+	 * @return \Aimeos\MW\Observer\Publisher\Iface Publisher object for method chaining
 	 */
 
-	public function addListener( \Aimeos\MW\Observer\Listener\Iface $l, $action );
+	public function attach( \Aimeos\MW\Observer\Listener\Iface $l, $action );
 
 
 	/**
@@ -36,8 +36,8 @@ interface Iface
 	 *
 	 * @param \Aimeos\MW\Observer\Listener\Iface $l Object implementing listener interface
 	 * @param string $action Name of the action to remove listener from
-	 * @return void
+	 * @return \Aimeos\MW\Observer\Publisher\Iface Publisher object for method chaining
 	 */
 
-	public function removeListener( \Aimeos\MW\Observer\Listener\Iface $l, $action );
+	public function detach( \Aimeos\MW\Observer\Listener\Iface $l, $action );
 }

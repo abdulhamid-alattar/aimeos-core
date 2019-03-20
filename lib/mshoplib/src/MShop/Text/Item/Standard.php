@@ -77,37 +77,6 @@ class Standard
 
 
 	/**
-	 * Returns the type ID of the text item.
-	 *
-	 * @return string|null Type ID of the text item
-	 */
-	public function getTypeId()
-	{
-		if( isset( $this->values['text.typeid'] ) ) {
-			return (string) $this->values['text.typeid'];
-		}
-	}
-
-
-	/**
-	 *  Sets the type ID of the text item.
-	 *
-	 * @param string $typeid Type ID of the text type
-	 * @return \Aimeos\MShop\Text\Item\Iface Text item for chaining method calls
-	 */
-	public function setTypeId( $typeid )
-	{
-		if( (string) $typeid !== $this->getTypeId() )
-		{
-			$this->values['text.typeid'] = (string) $typeid;
-			$this->setModified();
-		}
-
-		return $this;
-	}
-
-
-	/**
 	 * Returns the type of the text item.
 	 *
 	 * @return string|null Type of the text item
@@ -121,15 +90,20 @@ class Standard
 
 
 	/**
-	 * Returns the localized name of the type
+	 *  Sets the type of the text item.
 	 *
-	 * @return string|null Localized name of the type
+	 * @param string $type Type of the text type
+	 * @return \Aimeos\MShop\Text\Item\Iface Text item for chaining method calls
 	 */
-	public function getTypeName()
+	public function setType( $type )
 	{
-		if( isset( $this->values['text.typename'] ) ) {
-			return (string) $this->values['text.typename'];
+		if( (string) $type !== $this->getType() )
+		{
+			$this->values['text.type'] = (string) $type;
+			$this->setModified();
 		}
+
+		return $this;
 	}
 
 
@@ -291,33 +265,34 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Text\Item\Iface Text item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
-		unset( $list['text.type'], $list['text.typename'] );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'text.languageid': $this->setLanguageId( $value ); break;
-				case 'text.typeid': $this->setTypeId( $value ); break;
-				case 'text.label': $this->setLabel( $value ); break;
-				case 'text.domain': $this->setDomain( $value ); break;
-				case 'text.content': $this->setContent( $value ); break;
-				case 'text.status': $this->setStatus( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'text.languageid': $item = $item->setLanguageId( $value ); break;
+				case 'text.type': $item = $item->setType( $value ); break;
+				case 'text.label': $item = $item->setLabel( $value ); break;
+				case 'text.domain': $item = $item->setDomain( $value ); break;
+				case 'text.content': $item = $item->setContent( $value ); break;
+				case 'text.status': $item = $item->setStatus( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -332,16 +307,11 @@ class Standard
 		$list = parent::toArray( $private );
 
 		$list['text.languageid'] = $this->getLanguageId();
-		$list['text.typename'] = $this->getTypeName();
 		$list['text.type'] = $this->getType();
 		$list['text.label'] = $this->getLabel();
 		$list['text.domain'] = $this->getDomain();
 		$list['text.content'] = $this->getContent();
 		$list['text.status'] = $this->getStatus();
-
-		if( $private === true ) {
-			$list['text.typeid'] = $this->getTypeId();
-		}
 
 		return $list;
 	}

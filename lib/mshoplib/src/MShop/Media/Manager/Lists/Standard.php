@@ -25,7 +25,6 @@ class Standard
 		'media.lists.id' => array(
 			'code' => 'media.lists.id',
 			'internalcode' => 'mmedli."id"',
-			'internaldeps' => array( 'LEFT JOIN "mshop_media_list" AS mmedli ON ( mmed."id" = mmedli."parentid" )' ),
 			'label' => 'List ID',
 			'type' => 'integer',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
@@ -47,13 +46,12 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'media.lists.typeid' => array(
-			'code' => 'media.lists.typeid',
-			'internalcode' => 'mmedli."typeid"',
-			'label' => 'List type ID',
-			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
-			'public' => false,
+		'media.lists.type' => array(
+			'code' => 'media.lists.type',
+			'internalcode' => 'mmedli."type"',
+			'label' => 'List type',
+			'type' => 'string',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
 		'media.lists.refid' => array(
 			'code' => 'media.lists.refid',
@@ -147,16 +145,17 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param array $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Media\Manager\Lists\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		$path = 'mshop/media/manager/lists/submanagers';
-		foreach( $this->getContext()->getConfig()->get( $path, array( 'type' ) ) as $domain ) {
+		foreach( $this->getContext()->getConfig()->get( $path, ['type'] ) as $domain ) {
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/media/manager/lists/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/media/manager/lists/standard/delete' );
 	}
 
 
@@ -164,13 +163,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/media/manager/lists/submanagers';
-
-		return $this->getResourceTypeBase( 'media/lists', $path, array( 'type' ), $withsub );
+		return $this->getResourceTypeBase( 'media/lists', $path, [], $withsub );
 	}
 
 
@@ -178,7 +176,7 @@ class Standard
 	 * Returns the list attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -201,7 +199,7 @@ class Standard
 		 */
 		$path = 'mshop/media/manager/lists/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'type' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -372,9 +370,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/update/mysql
@@ -409,9 +404,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/newid/mysql
@@ -450,9 +442,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/delete/mysql
@@ -485,9 +474,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/search/mysql
@@ -547,9 +533,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/delete/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/count/mysql
@@ -603,9 +586,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/delete/ansi
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
 		 */
 
 		/** mshop/media/manager/lists/standard/aggregate/mysql
@@ -656,123 +636,6 @@ class Standard
 		 * @see mshop/media/manager/lists/standard/delete/ansi
 		 * @see mshop/media/manager/lists/standard/search/ansi
 		 * @see mshop/media/manager/lists/standard/count/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/getposmax/mysql
-		 * Retrieves the position of the list record with the highest number
-		 *
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/getposmax/ansi
-		 * Retrieves the position of the list record with the highest number
-		 *
-		 * When moving or inserting records into the list, the highest position
-		 * number must be known to append records at the end. Only records from
-		 * the same site that is configured via the conmedia item are considered.
-		 *
-		 * The SQL statement must be a string suitable for being used as
-		 * prepared statement. It must include question marks for binding the
-		 * required values to the statement before they are sent to the
-		 * database server. The number of question marks must be the same as
-		 * used in the moveItem() method and their order must correspond to the
-		 * order in the same method.
-		 *
-		 * The SQL statement should conform to the ANSI standard to be
-		 * with most relational database systems. This also includes using
-		 * double quotes for table and column names.
-		 *
-		 * @param string SQL statement for determining the position with the highest number
-		 * @since 2014.07
-		 * @category Developer
-		 * @see mshop/media/manager/lists/standard/insert/ansi
-		 * @see mshop/media/manager/lists/standard/update/ansi
-		 * @see mshop/media/manager/lists/standard/newid/ansi
-		 * @see mshop/media/manager/lists/standard/delete/ansi
-		 * @see mshop/media/manager/lists/standard/search/ansi
-		 * @see mshop/media/manager/lists/standard/count/ansi
-		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/move/mysql
-		 * Moves a list item to another position and updates the other items accordingly
-		 *
-		 * @see mshop/media/manager/lists/standard/move/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/move/ansi
-		 * Moves a list item to another position and updates the other items accordingly
-		 *
-		 * Reorders the records in the list table by updating their position
-		 * field. The records must be from the site that is configured via the
-		 * conmedia item.
-		 *
-		 * The SQL statement must be a string suitable for being used as
-		 * prepared statement. It must include question marks for binding the
-		 * required values to the statement before they are sent to the
-		 * database server. The number of question marks must be the same as
-		 * used in the moveItem() method and their order must correspond to the
-		 * order in the same method.
-		 *
-		 * The SQL statement should conform to the ANSI standard to be
-		 * with most relational database systems. This also includes using
-		 * double quotes for table and column names.
-		 *
-		 * @param string SQL statement for moving items
-		 * @since 2014.07
-		 * @category Developer
-		 * @see mshop/media/manager/lists/standard/insert/ansi
-		 * @see mshop/media/manager/lists/standard/update/ansi
-		 * @see mshop/media/manager/lists/standard/newid/ansi
-		 * @see mshop/media/manager/lists/standard/delete/ansi
-		 * @see mshop/media/manager/lists/standard/search/ansi
-		 * @see mshop/media/manager/lists/standard/count/ansi
-		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/updatepos/mysql
-		 * Updates the position value of a single list record
-		 *
-		 * @see mshop/media/manager/lists/standard/updatepos/ansi
-		 */
-
-		/** mshop/media/manager/lists/standard/updatepos/ansi
-		 * Updates the position value of a single list record
-		 *
-		 * The moveItem() method needs to set the position value of a sinlge
-		 * record in some cases. The records must be from the site that is
-		 * configured via the conmedia item.
-		 *
-		 * The SQL statement must be a string suitable for being used as
-		 * prepared statement. It must include question marks for binding the
-		 * required values to the statement before they are sent to the
-		 * database server. The number of question marks must be the same as
-		 * used in the moveItem() method and their order must correspond to the
-		 * order in the same method.
-		 *
-		 * The SQL statement should conform to the ANSI standard to be
-		 * with most relational database systems. This also includes using
-		 * double quotes for table and column names.
-		 *
-		 * @param string SQL statement for moving items
-		 * @since 2014.07
-		 * @category Developer
-		 * @see mshop/media/manager/lists/standard/insert/ansi
-		 * @see mshop/media/manager/lists/standard/update/ansi
-		 * @see mshop/media/manager/lists/standard/newid/ansi
-		 * @see mshop/media/manager/lists/standard/delete/ansi
-		 * @see mshop/media/manager/lists/standard/search/ansi
-		 * @see mshop/media/manager/lists/standard/count/ansi
-		 * @see mshop/media/manager/lists/standard/aggregate/ansi
-		 * @see mshop/media/manager/lists/standard/getposmax/ansi
-		 * @see mshop/media/manager/lists/standard/move/ansi
 		 */
 
 		return 'mshop/media/manager/lists/standard/';

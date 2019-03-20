@@ -19,7 +19,7 @@ class TestHelperMShop
 	public static function bootstrap()
 	{
 		self::getAimeos();
-		\Aimeos\MShop\Factory::setCache( false );
+		\Aimeos\MShop::cache( false );
 	}
 
 
@@ -115,12 +115,12 @@ class TestHelperMShop
 		$ctx->setView( $view );
 
 
-		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::createManager( $ctx );
+		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::create( $ctx );
 		$locale = $localeManager->bootstrap( $site, 'de', '', false );
 		$ctx->setLocale( $locale );
 
 
-		$ctx->setEditor( 'core:unittest' );
+		$ctx->setEditor( 'core:lib/mshoplib' );
 
 		return $ctx;
 	}

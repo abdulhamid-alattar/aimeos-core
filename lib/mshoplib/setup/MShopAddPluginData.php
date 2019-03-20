@@ -58,7 +58,7 @@ class MShopAddPluginData extends \Aimeos\MW\Setup\Task\Base
 
 
 		$ds = DIRECTORY_SEPARATOR;
-		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::create( $this->additional, 'Standard' );
 
 
 		$filename = __DIR__ . $ds . 'default' . $ds . 'data' . $ds . 'plugin.php';
@@ -97,12 +97,8 @@ class MShopAddPluginData extends \Aimeos\MW\Setup\Task\Base
 		{
 			$total++;
 
-			if( !isset( $types[$dataset['typeid']] ) ) {
-				throw new \RuntimeException( sprintf( 'No plugin type "%1$s" found', $dataset['typeid'] ) );
-			}
-
 			$item->setId( null );
-			$item->setTypeId( $types[$dataset['typeid']]->getId() );
+			$item->setType( $dataset['type'] );
 			$item->setProvider( $dataset['provider'] );
 			$item->setLabel( $dataset['label'] );
 			$item->setConfig( $dataset['config'] );

@@ -25,7 +25,6 @@ class Standard
 		'product.property.id' => array(
 			'code' => 'product.property.id',
 			'internalcode' => 'mpropr."id"',
-			'internaldeps'=>array( 'LEFT JOIN "mshop_product_property" AS mpropr ON ( mpropr."parentid" = mpro."id" )' ),
 			'label' => 'Property ID',
 			'type' => 'integer',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
@@ -47,13 +46,12 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'product.property.typeid' => array(
-			'code' => 'product.property.typeid',
-			'internalcode' => 'mpropr."typeid"',
-			'label' => 'Property type ID',
-			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
-			'public' => false,
+		'product.property.type' => array(
+			'code' => 'product.property.type',
+			'internalcode' => 'mpropr."type"',
+			'label' => 'Property type',
+			'type' => 'string',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
 		'product.property.value' => array(
 			'code' => 'product.property.value',
@@ -111,7 +109,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Product\Manager\Property\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -120,7 +119,7 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/product/manager/property/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/product/manager/property/standard/delete' );
 	}
 
 
@@ -128,13 +127,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/product/manager/property/submanagers';
-
-		return $this->getResourceTypeBase( 'product/property', $path, array( 'type' ), $withsub );
+		return $this->getResourceTypeBase( 'product/property', $path, [], $withsub );
 	}
 
 
@@ -142,7 +140,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array Returns a list of attribtes implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -165,7 +163,7 @@ class Standard
 		 */
 		$path = 'mshop/product/manager/property/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'type' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -173,8 +171,7 @@ class Standard
 	 * Returns a new manager for product extensions
 	 *
 	 * @param string $manager Name of the sub manager type in lower case
-	 * @param string|null $name Name of the implementation, will be from
-	 * configuration (or Default) if null
+	 * @param string|null $name Name of the implementation, will be from configuration (or Standard) if null
 	 * @return \Aimeos\MShop\Common\Manager\Iface Manager for different extensions, e.g property types, property lists etc.
 	 */
 	public function getSubManager( $manager, $name = null )

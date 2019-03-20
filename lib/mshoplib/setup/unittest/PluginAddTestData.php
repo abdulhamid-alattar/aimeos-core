@@ -22,18 +22,7 @@ class PluginAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'ServiceListAddTestData', 'SupplierAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class PluginAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding plugin test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$this->addPluginData();
 
@@ -60,7 +49,7 @@ class PluginAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addPluginData()
 	{
-		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$pluginManager = \Aimeos\MShop\Plugin\Manager\Factory::create( $this->additional, 'Standard' );
 		$pluginTypeManager = $pluginManager->getSubManager( 'type', 'Standard' );
 
 		$ds = DIRECTORY_SEPARATOR;
@@ -70,7 +59,6 @@ class PluginAddTestData extends \Aimeos\MW\Setup\Task\Base
 			throw new \Aimeos\MShop\Exception( sprintf( 'No file "%1$s" found for plugin domain', $path ) );
 		}
 
-		$plugTypeIds = [];
 		$type = $pluginTypeManager->createItem();
 
 		$pluginManager->begin();
@@ -84,18 +72,13 @@ class PluginAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$type->setStatus( $dataset['status'] );
 
 			$pluginTypeManager->saveItem( $type );
-			$plugTypeIds[$key] = $type->getId();
 		}
 
 		$plugin = $pluginManager->createItem();
 		foreach( $testdata['plugin'] as $dataset )
 		{
-			if( !isset( $plugTypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No plugin type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$plugin->setId( null );
-			$plugin->setTypeId( $plugTypeIds[$dataset['typeid']] );
+			$plugin->setType( $dataset['type'] );
 			$plugin->setLabel( $dataset['label'] );
 			$plugin->setStatus( $dataset['status'] );
 			$plugin->setConfig( $dataset['config'] );

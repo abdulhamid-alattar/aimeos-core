@@ -58,8 +58,8 @@ class Supplier
 	{
 		parent::__construct( $provider, $context, $serviceItem );
 
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'supplier' );
-		$addrManager = \Aimeos\MShop\Factory::createManager( $context, 'supplier/address' );
+		$manager = \Aimeos\MShop::create( $context, 'supplier' );
+		$addrManager = \Aimeos\MShop::create( $context, 'supplier/address' );
 
 		$search = $manager->createSearch( true );
 		$search->setSortations( [$search->sort( '+', 'supplier.label' )] );
@@ -183,6 +183,7 @@ class Supplier
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem Order service item that will be added to the basket
 	 * @param array $attributes Attribute key/value pairs entered by the customer during the checkout process
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item with attributes added
 	 */
 	public function setConfigFE( \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem, array $attributes )
 	{
@@ -197,6 +198,6 @@ class Supplier
 			}
 		}
 
-		$this->getProvider()->setConfigFE( $orderServiceItem, $attributes );
+		return $this->getProvider()->setConfigFE( $orderServiceItem, $attributes );
 	}
 }

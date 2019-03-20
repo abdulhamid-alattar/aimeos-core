@@ -25,7 +25,6 @@ class Standard
 		'service.type.id' => array(
 			'code' => 'service.type.id',
 			'internalcode' => 'mserty."id"',
-			'internaldeps' => array( 'LEFT JOIN "mshop_service_type" AS mserty ON ( mser."typeid" = mserty."id" )' ),
 			'label' => 'Type ID',
 			'type' => 'integer',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
@@ -116,7 +115,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param array $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Service\Manager\Type\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -125,7 +125,7 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/service/manager/type/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/service/manager/type/standard/delete' );
 	}
 
 
@@ -133,12 +133,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/service/manager/type/submanagers';
-
 		return $this->getResourceTypeBase( 'service/type', $path, [], $withsub );
 	}
 
@@ -147,7 +146,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{

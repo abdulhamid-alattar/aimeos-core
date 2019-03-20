@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$this->object = \Aimeos\MShop\Attribute\Manager\Factory::createManager( \TestHelperMShop::getContext() );
+		$this->object = \Aimeos\MShop\Attribute\Manager\Factory::create( \TestHelperMShop::getContext() );
 	}
 
 
@@ -31,7 +31,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -40,9 +46,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$result = $this->object->getResourceType();
 
 		$this->assertContains( 'attribute', $result );
-		$this->assertContains( 'attribute/type', $result );
 		$this->assertContains( 'attribute/lists', $result );
-		$this->assertContains( 'attribute/lists/type', $result );
 	}
 
 
@@ -62,9 +66,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCreateItemType()
 	{
-		$item = $this->object->createItem( 'color', 'product' );
-
-		$this->assertNotNull( $item->getTypeId() );
+		$item = $this->object->createItem( ['attribute.type' => 'color'] );
 		$this->assertEquals( 'color', $item->getType() );
 	}
 
@@ -118,12 +120,11 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testGetItem()
 	{
 		$itemA = $this->object->findItem( 'black', [], 'product', 'color' );
-		$itemB = $this->object->getItem( $itemA->getId(), ['attribute/property'] );
+		$itemB = $this->object->getItem( $itemA->getId(), ['attribute/property', 'text'] );
 
 		$this->assertEquals( $itemA->getId(), $itemB->getId() );
 		$this->assertEquals( 1, count( $itemB->getPropertyItems() ) );
 		$this->assertEquals( 1, count( $itemB->getListItems( null, null, null, false ) ) );
-		$this->assertNotEquals( '', $itemB->getTypeName() );
 	}
 
 
@@ -147,14 +148,12 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSaveUpdateDeleteItem()
 	{
-		$typeItem = $this->object->getSubManager( 'type' )->findItem( 'size', [], 'product' );
-
 		$item = $this->object->createItem();
 		$item->setId( null );
 		$item->setDomain( 'tmpDomainx' );
 		$item->setCode( '106x' );
 		$item->setLabel( '106x' );
-		$item->setTypeId( $typeItem->getId() );
+		$item->setType( 'size' );
 		$item->setPosition( 0 );
 		$item->setStatus( 7 );
 		$resultSaved = $this->object->saveItem( $item );
@@ -178,7 +177,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $item->getDomain(), $itemSaved->getDomain() );
 		$this->assertEquals( $item->getCode(), $itemSaved->getCode() );
 		$this->assertEquals( $item->getLabel(), $itemSaved->getLabel() );
-		$this->assertEquals( $item->getTypeId(), $itemSaved->getTypeId() );
+		$this->assertEquals( $item->getType(), $itemSaved->getType() );
 		$this->assertEquals( $item->getPosition(), $itemSaved->getPosition() );
 		$this->assertEquals( $item->getStatus(), $itemSaved->getStatus() );
 
@@ -192,7 +191,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals( $itemExp->getDomain(), $itemUpd->getDomain() );
 		$this->assertEquals( $itemExp->getCode(), $itemUpd->getCode() );
 		$this->assertEquals( $itemExp->getLabel(), $itemUpd->getLabel() );
-		$this->assertEquals( $itemExp->getTypeId(), $itemUpd->getTypeId() );
+		$this->assertEquals( $itemExp->getType(), $itemUpd->getType() );
 		$this->assertEquals( $itemExp->getPosition(), $itemUpd->getPosition() );
 		$this->assertEquals( $itemExp->getStatus(), $itemUpd->getStatus() );
 
@@ -233,72 +232,51 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testSearchItems()
 	{
+		$item = $this->object->findItem( 'black', ['text'], 'product', 'color' );
+
+		if( ( $listItem = current( $item->getListItems( 'text', 'default', null, false ) ) ) === false ) {
+			throw new \RuntimeException( 'No list item found' );
+		}
+
 		$search = $this->object->createSearch();
 
 		$expr = [];
 		$expr[] = $search->compare( '!=', 'attribute.id', null );
 		$expr[] = $search->compare( '!=', 'attribute.siteid', null );
-		$expr[] = $search->compare( '!=', 'attribute.typeid', null );
-		$expr[] = $search->compare( '==', 'attribute.position', 5 );
-		$expr[] = $search->compare( '==', 'attribute.code', 'black' );
-		$expr[] = $search->compare( '==', 'attribute.label', 'product/color/black' );
 		$expr[] = $search->compare( '==', 'attribute.domain', 'product' );
+		$expr[] = $search->compare( '==', 'attribute.type', 'color' );
+		$expr[] = $search->compare( '==', 'attribute.code', 'black' );
+		$expr[] = $search->compare( '==', 'attribute.position', 5 );
 		$expr[] = $search->compare( '==', 'attribute.status', 0 );
+		$expr[] = $search->compare( '==', 'attribute.key', 'product|color|black' );
+		$expr[] = $search->compare( '==', 'attribute.label', 'product/color/black' );
 		$expr[] = $search->compare( '>=', 'attribute.mtime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '>=', 'attribute.ctime', '1970-01-01 00:00:00' );
 		$expr[] = $search->compare( '==', 'attribute.editor', $this->editor );
 
-		$expr[] = $search->compare( '!=', 'attribute.type.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.type.siteid', null );
-		$expr[] = $search->compare( '==', 'attribute.type.code', 'color' );
-		$expr[] = $search->compare( '==', 'attribute.type.domain', 'product' );
-		$expr[] = $search->compare( '==', 'attribute.type.label', 'Color' );
-		$expr[] = $search->compare( '==', 'attribute.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'attribute.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'attribute.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.type.editor', $this->editor );
+		$param = array( 'text', 'default', '0' );
+		$expr[] = $search->compare( '==', $search->createFunction( 'attribute:has', $param ), null );
 
-		$expr[] = $search->compare( '!=', 'attribute.lists.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.lists.siteid', null );
-		$expr[] = $search->compare( '!=', 'attribute.lists.parentid', null );
-		$expr[] = $search->compare( '==', 'attribute.lists.domain', 'text' );
-		$expr[] = $search->compare( '!=', 'attribute.lists.typeid', null );
-		$expr[] = $search->compare( '>', 'attribute.lists.refid', 0 );
-		$expr[] = $search->compare( '==', 'attribute.lists.datestart', '2000-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.lists.dateend', '2001-01-01 00:00:00' );
-		$expr[] = $search->compare( '!=', 'attribute.lists.config', null );
-		$expr[] = $search->compare( '==', 'attribute.lists.position', 0 );
-		$expr[] = $search->compare( '==', 'attribute.lists.status', 1 );
-		$expr[] = $search->compare( '>=', 'attribute.lists.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'attribute.lists.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.lists.editor', $this->editor );
+		$param = array( 'text', 'default', $listItem->getRefId() );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:has', $param ), null );
 
-		$expr[] = $search->compare( '!=', 'attribute.lists.type.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.lists.type.siteid', null );
-		$expr[] = $search->compare( '==', 'attribute.lists.type.code', 'default' );
-		$expr[] = $search->compare( '==', 'attribute.lists.type.domain', 'text' );
-		$expr[] = $search->compare( '==', 'attribute.lists.type.label', 'Standard' );
-		$expr[] = $search->compare( '==', 'attribute.lists.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'attribute.lists.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'attribute.lists.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.lists.type.editor', $this->editor );
+		$param = array( 'text', 'default' );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:has', $param ), null );
 
-		$expr[] = $search->compare( '!=', 'attribute.property.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.property.siteid', null );
-		$expr[] = $search->compare( '!=', 'attribute.property.typeid', null );
-		$expr[] = $search->compare( '==', 'attribute.property.languageid', 'de' );
-		$expr[] = $search->compare( '==', 'attribute.property.value', '#000000' );
-		$expr[] = $search->compare( '==', 'attribute.property.editor', $this->editor );
+		$param = array( 'text' );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:has', $param ), null );
 
-		$expr[] = $search->compare( '!=', 'attribute.property.type.id', null );
-		$expr[] = $search->compare( '!=', 'attribute.property.type.siteid', null );
-		$expr[] = $search->compare( '==', 'attribute.property.type.code', 'htmlcolor' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.domain', 'attribute' );
-		$expr[] = $search->compare( '>', 'attribute.property.type.label', 'HTML' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.status', 1 );
-		$expr[] = $search->compare( '>=', 'attribute.property.type.mtime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '>=', 'attribute.property.type.ctime', '1970-01-01 00:00:00' );
-		$expr[] = $search->compare( '==', 'attribute.property.type.editor', $this->editor );
+		$param = array( 'htmlcolor', null, '0' );
+		$expr[] = $search->compare( '==', $search->createFunction( 'attribute:prop', $param ), null );
+
+		$param = array( 'htmlcolor', 'de', '#000000' );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:prop', $param ), null );
+
+		$param = array( 'htmlcolor', 'de' );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:prop', $param ), null );
+
+		$param = array( 'htmlcolor' );
+		$expr[] = $search->compare( '!=', $search->createFunction( 'attribute:prop', $param ), null );
 
 		$total = 0;
 		$search->setConditions( $search->combine( '&&', $expr ) );
@@ -315,7 +293,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		//search with base criteria
 		$search = $this->object->createSearch( true );
 		$expr = array(
-			$search->compare( '==', 'attribute.type.domain', 'product' ),
+			$search->compare( '==', 'attribute.domain', 'product' ),
 			$search->compare( '~=', 'attribute.code', '3' ),
 			$search->compare( '==', 'attribute.editor', $this->editor ),
 			$search->getConditions(),
@@ -339,8 +317,8 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$search = $this->object->createSearch();
 		$conditions = array(
-			$search->compare( '==', 'attribute.type.code', 'size' ),
-			$search->compare( '==', 'attribute.type.domain', 'product' ),
+			$search->compare( '==', 'attribute.type', 'size' ),
+			$search->compare( '==', 'attribute.domain', 'product' ),
 			$search->compare( '==', 'attribute.editor', $this->editor )
 		);
 		$search->setConditions( $search->combine( '&&', $conditions ) );

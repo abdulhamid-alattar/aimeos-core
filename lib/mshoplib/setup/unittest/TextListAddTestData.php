@@ -22,18 +22,7 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'PriceListAddTestData', 'TextAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['TextAddTestData', 'MediaAddTestData'];
 	}
 
 
@@ -45,7 +34,7 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding text-list test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'text-list.php';
@@ -77,7 +66,7 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function getMediaData( array $keys )
 	{
-		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
 
 		$urls = [];
 		foreach( $keys as $dataset )
@@ -111,7 +100,7 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addTextData( array $testdata, array $refIds )
 	{
-		$textManager = \Aimeos\MShop\Text\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$textManager = \Aimeos\MShop\Text\Manager\Factory::create( $this->additional, 'Standard' );
 		$textListManager = $textManager->getSubManager( 'lists', 'Standard' );
 		$textListTypeManager = $textListManager->getSubmanager( 'type', 'Standard' );
 
@@ -133,7 +122,6 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$parentIds['text/' . $item->getLabel()] = $item->getId();
 		}
 
-		$tListTypeIds = [];
 		$tListType = $textListTypeManager->createItem();
 
 		$textManager->begin();
@@ -147,7 +135,6 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$tListType->setStatus( $dataset['status'] );
 
 			$textListTypeManager->saveItem( $tListType );
-			$tListTypeIds[$key] = $tListType->getId();
 		}
 
 		$tList = $textListManager->createItem();
@@ -157,18 +144,14 @@ class TextListAddTestData extends \Aimeos\MW\Setup\Task\Base
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No text ID found for "%1$s"', $dataset['parentid'] ) );
 			}
 
-			if( !isset( $tListTypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No text list type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			if( !isset( $refIds[$dataset['domain']][$dataset['refid']] ) ) {
 				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No "%1$s" ref ID found for "%2$s"', $dataset['refid'], $dataset['domain'] ) );
 			}
 
 			$tList->setId( null );
 			$tList->setParentId( $parentIds[$dataset['parentid']] );
-			$tList->setTypeId( $tListTypeIds[$dataset['typeid']] );
 			$tList->setRefId( $refIds[$dataset['domain']] [$dataset['refid']] );
+			$tList->setType( $dataset['type'] );
 			$tList->setDomain( $dataset['domain'] );
 			$tList->setDateStart( $dataset['start'] );
 			$tList->setDateEnd( $dataset['end'] );

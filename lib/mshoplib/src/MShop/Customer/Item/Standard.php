@@ -30,18 +30,18 @@ class Standard extends Base implements Iface
 	 *
 	 * @param \Aimeos\MShop\Common\Item\Address\Iface $address Payment address item object
 	 * @param array $values List of attributes that belong to the customer item
-	 * @param \Aimeos\MShop\Common\Lists\Item\Iface[] $listItems List of list items
+	 * @param \Aimeos\MShop\Common\Item\Lists\Iface[] $listItems List of list items
 	 * @param \Aimeos\MShop\Common\Item\Iface[] $refItems List of referenced items
-	 * @param string $salt Password salt (optional)
-	 * @param \Aimeos\MShop\Common\Item\Helper\Password\Iface|null $helper Password encryption helper object
-	 * @param \Aimeos\MShop\Customer\Item\Address\Iface[] $addresses List of delivery addresses
+	 * @param \Aimeos\MShop\Common\Item\Address\Iface[] $addrItems List of delivery addresses
 	 * @param \Aimeos\MShop\Common\Item\Property\Iface[] $propItems List of property items
+	 * @param \Aimeos\MShop\Common\Helper\Password\Iface|null $helper Password encryption helper object
+	 * @param string|null $salt Password salt
 	 */
-	public function __construct( \Aimeos\MShop\Common\Item\Address\Iface $address,
-		array $values = [], array $listItems = [], array $refItems = [], $salt = null,
-		\Aimeos\MShop\Common\Item\Helper\Password\Iface $helper = null, array $addresses = [], array $propItems = [] )
+	public function __construct( \Aimeos\MShop\Common\Item\Address\Iface $address, array $values = [],
+		array $listItems = [], array $refItems = [], array $addrItems = [], array $propItems = [],
+		\Aimeos\MShop\Common\Helper\Password\Iface $helper = null, $salt = null )
 	{
-		parent::__construct( $address, $values, $listItems, $refItems, $addresses, $propItems );
+		parent::__construct( $address, $values, $listItems, $refItems, $addrItems, $propItems );
 
 		$this->values = $values;
 		$this->helper = $helper;
@@ -109,7 +109,7 @@ class Standard extends Base implements Iface
 			return (int) $this->values['customer.status'];
 		}
 
-		return 0;
+		return 1;
 	}
 
 
@@ -289,7 +289,7 @@ class Standard extends Base implements Iface
 	/**
 	 * Sets the group IDs the customer belongs to
 	 *
-	 * @param array $ids List of group IDs
+	 * @param string[] $ids List of group IDs
 	 * @return \Aimeos\MShop\Customer\Item\Iface Customer item for chaining method calls
 	 */
 	public function setGroups( array $ids )
@@ -312,33 +312,35 @@ class Standard extends Base implements Iface
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Customer\Item\Iface Customer item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'customer.label': $this->setLabel( $value ); break;
-				case 'customer.code': $this->setCode( $value ); break;
-				case 'customer.birthday': $this->setBirthday( $value ); break;
-				case 'customer.status': $this->setStatus( $value ); break;
-				case 'customer.groups': $this->setGroups( $value ); break;
-				case 'customer.password': $this->setPassword( $value ); break;
-				case 'customer.dateverified': $this->setDateVerified( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'customer.label': $item = $item->setLabel( $value ); break;
+				case 'customer.code': $item = $item->setCode( $value ); break;
+				case 'customer.birthday': $item = $item->setBirthday( $value ); break;
+				case 'customer.status': $item = $item->setStatus( $value ); break;
+				case 'customer.groups': $item = $item->setGroups( $value ); break;
+				case 'customer.password': !$private ?: $item = $item->setPassword( $value ); break;
+				case 'customer.dateverified': !$private ?: $item = $item->setDateVerified( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 
@@ -356,10 +358,10 @@ class Standard extends Base implements Iface
 		$list['customer.code'] = $this->getCode();
 		$list['customer.birthday'] = $this->getBirthday();
 		$list['customer.status'] = $this->getStatus();
+		$list['customer.groups'] = $this->getGroups();
 
 		if( $private === true )
 		{
-			$list['customer.groups'] = $this->getGroups();
 			$list['customer.password'] = $this->getPassword();
 			$list['customer.dateverified'] = $this->getDateVerified();
 		}

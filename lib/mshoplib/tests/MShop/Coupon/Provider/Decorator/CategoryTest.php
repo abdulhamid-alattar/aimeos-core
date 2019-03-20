@@ -19,19 +19,18 @@ class CategoryTest extends \PHPUnit\Framework\TestCase
 
 	protected function setUp()
 	{
-		$orderProducts = [];
 		$this->context = \TestHelperMShop::getContext();
-		$this->couponItem = \Aimeos\MShop\Coupon\Manager\Factory::createManager( $this->context )->createItem();
+		$this->couponItem = \Aimeos\MShop\Coupon\Manager\Factory::create( $this->context )->createItem();
 
 		$provider = new \Aimeos\MShop\Coupon\Provider\Example( $this->context, $this->couponItem, 'abcd' );
 		$this->object = new \Aimeos\MShop\Coupon\Provider\Decorator\Category( $provider, $this->context, $this->couponItem, 'abcd');
 		$this->object->setObject( $this->object );
 
-		$priceManager = \Aimeos\MShop\Factory::createManager( $this->context, 'price' );
-		$productManager = \Aimeos\MShop\Factory::createManager( $this->context, 'product' );
-		$product = $productManager->findItem( 'CNC' );
+		$priceManager = \Aimeos\MShop::create( $this->context, 'price' );
+		$productManager = \Aimeos\MShop::create( $this->context, 'product' );
+		$product = $productManager->findItem( 'CNE' );
 
-		$orderProductManager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/product' );
+		$orderProductManager = \Aimeos\MShop::create( $this->context, 'order/base/product' );
 		$orderProduct = $orderProductManager->createItem();
 		$orderProduct->copyFrom( $product );
 

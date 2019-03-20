@@ -36,27 +36,28 @@ abstract class DBBase
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->cleanup( $siteids );
 		}
+
+		return $this;
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Product\Item\Iface New product item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' )->createItem( $type, $domain, $values );
+		return \Aimeos\MShop::create( $this->getContext(), 'product' )->createItem( $values );
 	}
 
 
@@ -68,21 +69,37 @@ abstract class DBBase
 	 */
 	public function createSearch( $default = false )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' )->createSearch( $default );
+		return \Aimeos\MShop::create( $this->getContext(), 'product' )->createSearch( $default );
+	}
+
+
+	/**
+	 * Returns the item specified by its code and domain/type if necessary
+	 *
+	 * @param string $code Code of the item
+	 * @param string[] $ref List of domains to fetch list items and referenced items for
+	 * @param string|null $domain Domain of the item if necessary to identify the item uniquely
+	 * @param string|null $type Type code of the item if necessary to identify the item uniquely
+	 * @param boolean $default True to add default criteria
+	 * @return \Aimeos\MShop\Common\Item\Iface Item object
+	 */
+	public function findItem( $code, array $ref = [], $domain = 'product', $type = null, $default = false )
+	{
+		return \Aimeos\MShop::create( $this->getContext(), 'product' )->findItem( $code, $ref, $domain, $type, $default );
 	}
 
 
 	/**
 	 * Returns the product item for the given ID
 	 *
-	 * @param integer $id Id of item
+	 * @param string $id Id of item
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Product\Item\Iface Product item object
 	 */
 	public function getItem( $id, array $ref = [], $default = false )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' )->getItem( $id, $ref, $default );
+		return \Aimeos\MShop::create( $this->getContext(), 'product' )->getItem( $id, $ref, $default );
 	}
 
 
@@ -94,29 +111,32 @@ abstract class DBBase
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
-		return \Aimeos\MShop\Factory::createManager( $this->getContext(), 'product' )->getSearchAttributes( $withsub );
+		return \Aimeos\MShop::create( $this->getContext(), 'product' )->getSearchAttributes( $withsub );
 	}
 
 
 	/**
 	 * Rebuilds the customer index
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface[] $items Associative list of product IDs and items implementing \Aimeos\MShop\Product\Item\Iface
+	 * @param \Aimeos\MShop\Product\Item\Iface[] $items Associative list of product IDs and items values
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	public function rebuildIndex( array $items = [] )
 	{
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->rebuildIndex( $items );
 		}
+
+		return $this;
 	}
 
 
 	/**
 	 * Stores a new item into the index
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item Product item
+	 * @param \Aimeos\MShop\Product\Item\Iface $item Product item
 	 * @param boolean $fetch True if the new ID should be set in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface Saved item
+	 * @return \Aimeos\MShop\Product\Item\Iface Saved item
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -127,9 +147,9 @@ abstract class DBBase
 	/**
 	 * Adds or updates a list of items
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface[] $items List of items whose data should be saved
+	 * @param \Aimeos\MShop\Product\Item\Iface[] $items List of items whose data should be saved
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface[] Saved items
+	 * @return \Aimeos\MShop\Product\Item\Iface[] Saved items
 	 */
 	public function saveItems( array $items, $fetch = true )
 	{
@@ -142,6 +162,7 @@ abstract class DBBase
 	 *
 	 * @param string $timestamp Timestamp in ISO format (YYYY-MM-DD HH:mm:ss)
 	 * @param string $path Configuration path to the SQL statement to execute
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	protected function cleanupIndexBase( $timestamp, $path )
 	{
@@ -178,16 +199,19 @@ abstract class DBBase
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->cleanupIndex( $timestamp );
 		}
+
+		return $this;
 	}
 
 
 	/**
 	 * Removes several items from the index
 	 *
-	 * @param array $ids List of product IDs
+	 * @param string[] $ids List of product IDs
 	 * @param string $path Configuration path to the SQL statement to execute
 	 * @param boolean $siteidcheck If siteid should be used in the statement
 	 * @param string $name Name of the ID column
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	protected function deleteItemsBase( array $ids, $path, $siteidcheck = true, $name = 'prodid' )
 	{
@@ -197,7 +221,7 @@ abstract class DBBase
 			$submanager->deleteItems( $ids );
 		}
 
-		parent::deleteItemsBase( $ids, $path, $siteidcheck, $name );
+		return parent::deleteItemsBase( $ids, $path, $siteidcheck, $name );
 	}
 
 
@@ -205,10 +229,10 @@ abstract class DBBase
 	 * Returns the string replacements for the SQL statements
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search critera object
-	 * @param array $attributes Associative list of search keys and objects implementing the \Aimeos\MW\Criteria\Attribute\Iface
-	 * @param array $plugins Associative list of item keys and plugin objects implementing \Aimeos\MW\Criteria\Plugin\Iface
-	 * @param array $joins Associative list of SQL joins
-	 * @param array Array of keys, find and replace arrays
+	 * @param \Aimeos\MW\Criteria\Attribute\Iface[] $attributes Associative list of search keys and criteria attribute items
+	 * @param \Aimeos\MW\Criteria\Plugin\Iface[] $plugins Associative list of item keys and criteria plugin objects
+	 * @param string[] $joins Associative list of SQL joins
+	 * @param string[] Array of keys, find and replace arrays
 	 */
 	protected function getSQLReplacements( \Aimeos\MW\Criteria\Iface $search, array $attributes, array $plugins, array $joins )
 	{
@@ -254,6 +278,7 @@ abstract class DBBase
 	 * Optimizes the catalog customer index if necessary
 	 *
 	 * @param string $path Configuration path to the SQL statements to execute
+	 * @return \Aimeos\MShop\Index\Manager\Iface Manager object for chaining method calls
 	 */
 	protected function optimizeBase( $path )
 	{
@@ -280,6 +305,8 @@ abstract class DBBase
 		foreach( $this->getSubManagers() as $submanager ) {
 			$submanager->optimize();
 		}
+
+		return $this;
 	}
 
 
@@ -287,11 +314,11 @@ abstract class DBBase
 	 * Searches for items matching the given criteria.
 	 *
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria
-	 * @param array $ref List of domains to fetch list items and referenced items for
+	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param integer &$total Total number of items matched by the given criteria
 	 * @param string $cfgPathSearch Configuration path to the search SQL statement
 	 * @param string $cfgPathCount Configuration path to the count SQL statement
-	 * @return array List of items implementing \Aimeos\MShop\Product\Item\Iface with ids as keys
+	 * @return \Aimeos\MShop\Product\Item\Iface[] List of product items
 	 */
 	protected function searchItemsIndexBase( \Aimeos\MW\Criteria\Iface $search,
 		array $ref, &$total, $cfgPathSearch, $cfgPathCount )
@@ -353,7 +380,7 @@ abstract class DBBase
 			throw $e;
 		}
 
-		$manager = \Aimeos\MShop\Factory::createManager( $context, 'product' );
+		$manager = \Aimeos\MShop::create( $context, 'product' );
 		$prodSearch = $manager->createSearch();
 		$prodSearch->setConditions( $prodSearch->compare( '==', 'product.id', $ids ) );
 		$prodSearch->setSlice( 0, $search->getSliceSize() );

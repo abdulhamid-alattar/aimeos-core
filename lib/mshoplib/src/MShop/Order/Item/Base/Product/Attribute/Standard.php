@@ -54,7 +54,7 @@ class Standard
 	/**
 	 * Sets the site ID of the item.
 	 *
-	 * @param integer $value Unique site ID of the item
+	 * @param string $value Unique site ID of the item
 	 * @return \Aimeos\MShop\Order\Item\Base\Product\Attribute\Iface Order base product attribute item for chaining method calls
 	 */
 	public function setSiteId( $value )
@@ -329,39 +329,36 @@ class Standard
 	}
 
 
-	/**
-	 * Sets the item values from the given array.
+	/*
+	 * Sets the item values from the given array and removes that entries from the list
 	 *
-	 * @param array $list Associative list of item keys and their values
-	 * @return array Associative list of keys and their values that are unknown
+	 * @param array &$list Associative list of item keys and their values
+	 * @param boolean True to set private properties too, false for public only
+	 * @return \Aimeos\MShop\Order\Item\Base\Product\Attribute\Iface Order product attribute item for chaining method calls
 	 */
-	public function fromArray( array $list )
+	public function fromArray( array &$list, $private = false )
 	{
-		$unknown = [];
-
-		if( isset( $list['order.base.product.attribute.siteid'] ) ) { // set siteid in this class too
-			$this->setSiteId( $list['order.base.product.attribute.siteid'] );
-		}
-
-		$list = parent::fromArray( $list );
+		$item = parent::fromArray( $list, $private );
 
 		foreach( $list as $key => $value )
 		{
 			switch( $key )
 			{
-				case 'order.base.product.attribute.siteid': $this->setSiteId( $value ); break;
-				case 'order.base.product.attribute.attrid': $this->setAttributeId( $value ); break;
-				case 'order.base.product.attribute.parentid': $this->setParentId( $value ); break;
-				case 'order.base.product.attribute.type': $this->setType( $value ); break;
-				case 'order.base.product.attribute.code': $this->setCode( $value ); break;
-				case 'order.base.product.attribute.value': $this->setValue( $value ); break;
-				case 'order.base.product.attribute.name': $this->setName( $value ); break;
-				case 'order.base.product.attribute.quantity': $this->setQuantity( $value ); break;
-				default: $unknown[$key] = $value;
+				case 'order.base.product.attribute.siteid': !$private ?: $item = $item->setSiteId( $value ); break;
+				case 'order.base.product.attribute.attrid': !$private ?: $item = $item->setAttributeId( $value ); break;
+				case 'order.base.product.attribute.parentid': !$private ?: $item = $item->setParentId( $value ); break;
+				case 'order.base.product.attribute.type': $item = $item->setType( $value ); break;
+				case 'order.base.product.attribute.code': $item = $item->setCode( $value ); break;
+				case 'order.base.product.attribute.value': $item = $item->setValue( $value ); break;
+				case 'order.base.product.attribute.name': $item = $item->setName( $value ); break;
+				case 'order.base.product.attribute.quantity': $item = $item->setQuantity( $value ); break;
+				default: continue 2;
 			}
+
+			unset( $list[$key] );
 		}
 
-		return $unknown;
+		return $item;
 	}
 
 

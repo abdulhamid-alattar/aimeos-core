@@ -32,7 +32,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testAggregate()
 	{
 		$search = $this->object->createSearch();
-		$search->setConditions( $search->compare( '==', 'order.base.coupon.editor', 'core:unittest' ) );
+		$search->setConditions( $search->compare( '==', 'order.base.coupon.editor', 'core:lib/mshoplib' ) );
 		$result = $this->object->aggregate( $search, 'order.base.coupon.code' );
 
 		$this->assertEquals( 2, count( $result ) );
@@ -43,7 +43,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
+	}
+
+
+	public function testDeleteItems()
+	{
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->deleteItems( [-1] ) );
 	}
 
 
@@ -114,7 +120,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	public function testGetItem()
 	{
 		$obj = $this->object;
-		$search = $obj->createSearch();
+		$search = $obj->createSearch()->setSlice( 0, 1 );
 
 		$search->setConditions( $search->compare( '==', 'order.base.coupon.code', 'OPQR' ) );
 		$results = $obj->searchItems( $search );

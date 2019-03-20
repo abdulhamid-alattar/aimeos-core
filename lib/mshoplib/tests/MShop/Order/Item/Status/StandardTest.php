@@ -37,7 +37,6 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 		);
 
 		$this->object = new \Aimeos\MShop\Order\Item\Status\Standard( $this->values );
-
 	}
 
 
@@ -148,17 +147,16 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	{
 		$item = new \Aimeos\MShop\Order\Item\Status\Standard();
 
-		$list = array(
+		$list = $entries = array(
 			'order.status.id' => 1,
 			'order.status.parentid' => 2,
 			'order.status.type' => \Aimeos\MShop\Order\Item\Status\Base::STATUS_PAYMENT,
 			'order.status.value' => 'value',
 		);
 
-		$unknown = $item->fromArray( $list );
+		$item = $item->fromArray( $entries, true );
 
-		$this->assertEquals( [], $unknown );
-
+		$this->assertEquals( [], $entries );
 		$this->assertEquals( $list['order.status.id'], $item->getId() );
 		$this->assertEquals( $list['order.status.parentid'], $item->getParentId() );
 		$this->assertEquals( $list['order.status.type'], $item->getType() );

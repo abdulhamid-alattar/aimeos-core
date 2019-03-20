@@ -246,13 +246,91 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 			'public' => false,
 		),
+		'customer:has' => array(
+			'code' => 'customer:has()',
+			'internalcode' => '(
+				SELECT mcusli_has."id" FROM mshop_customer_list AS mcusli_has
+				WHERE mcus."id" = mcusli_has."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Customer has list item, parameter(<domain>[,<list type>[,<reference ID>)]]',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
+		'customer:prop' => array(
+			'code' => 'customer:prop()',
+			'internalcode' => '(
+				SELECT mcuspr_prop."id" FROM mshop_customer_property AS mcuspr_prop
+				WHERE mcus."id" = mcuspr_prop."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Customer has property item, parameter(<property type>[,<language code>[,<property value>]])',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
 	);
+
+
+	/**
+	 * Initializes the object.
+	 *
+	 * @param \Aimeos\MShop\Context\Item\Iface $context Context object
+	 */
+	public function __construct( \Aimeos\MShop\Context\Item\Iface $context )
+	{
+		parent::__construct( $context );
+
+		$self = $this;
+		$locale = $context->getLocale();
+
+		$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
+		$level = $context->getConfig()->get( 'mshop/customer/manager/sitemode', $level );
+
+		$siteIds = [$locale->getSiteId()];
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_PATH ) {
+			$siteIds = array_merge( $siteIds, $locale->getSitePath() );
+		}
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_SUBTREE ) {
+			$siteIds = array_merge( $siteIds, $locale->getSiteSubTree() );
+		}
+
+
+		$this->searchConfig['customer:has']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'mcusli_has."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'mcusli_has."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
+
+
+		$this->searchConfig['customer:prop']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'mcuspr_prop."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'mcuspr_prop."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
+	}
 
 
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Customer\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -263,19 +341,17 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/customer/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/customer/manager/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Customer\Item\Iface New customer item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['customer.siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -286,7 +362,7 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
@@ -301,7 +377,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -323,16 +399,16 @@ class Standard
 		 * @category Developer
 		 */
 		$path = 'mshop/customer/manager/submanagers';
-		$default = ['address', 'group', 'lists', 'property'];
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, $default, $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, ['address'], $withsub );
 	}
 
 
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Customer\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -367,7 +443,8 @@ class Standard
 		 * @see mshop/customer/manager/standard/count/ansi
 		 */
 		$path = 'mshop/customer/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -376,11 +453,13 @@ class Standard
 	 *
 	 * @param \Aimeos\MShop\Customer\Item\Iface $item Customer item object
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Customer\Item\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
 		self::checkClass( \Aimeos\MShop\Customer\Item\Iface::class, $item );
+
+		$item = $this->addGroups( $item );
 
 		if( !$item->isModified() )
 		{
@@ -568,8 +647,6 @@ class Standard
 			$dbm->release( $conn, $dbname );
 			throw $e;
 		}
-
-		$this->addGroups( $item );
 
 		$item = $this->savePropertyItems( $item, 'customer', $fetch );
 		$item = $this->saveAddressItems( $item, 'customer', $fetch );

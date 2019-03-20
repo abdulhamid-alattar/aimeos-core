@@ -25,7 +25,6 @@ class Standard
 		'customer.property.id' => array(
 			'code' => 'customer.property.id',
 			'internalcode' => 'mcuspr."id"',
-			'internaldeps'=>array( 'LEFT JOIN "mshop_customer_property" AS mcuspr ON ( mcuspr."parentid" = mcus."id" )' ),
 			'label' => 'Property ID',
 			'type' => 'integer',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
@@ -47,13 +46,12 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'customer.property.typeid' => array(
-			'code' => 'customer.property.typeid',
-			'internalcode' => 'mcuspr."typeid"',
-			'label' => 'Property type ID',
-			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
-			'public' => false,
+		'customer.property.type' => array(
+			'code' => 'customer.property.type',
+			'internalcode' => 'mcuspr."type"',
+			'label' => 'Property type',
+			'type' => 'string',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
 		'customer.property.value' => array(
 			'code' => 'customer.property.value',
@@ -111,7 +109,8 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Customer\Manager\Property\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -120,7 +119,7 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/customer/manager/property/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/customer/manager/property/standard/delete' );
 	}
 
 
@@ -128,13 +127,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/customer/manager/property/submanagers';
-
-		return $this->getResourceTypeBase( 'customer/property', $path, ['type'], $withsub );
+		return $this->getResourceTypeBase( 'customer/property', $path, [], $withsub );
 	}
 
 
@@ -142,7 +140,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array Returns a list of attribtes implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -165,7 +163,7 @@ class Standard
 		 */
 		$path = 'mshop/customer/manager/property/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, ['type'], $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 

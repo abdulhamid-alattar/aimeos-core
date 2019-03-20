@@ -21,18 +21,18 @@ class FreeShippingTest extends \PHPUnit\Framework\TestCase
 		$context = \TestHelperMShop::getContext();
 
 
-		$couponItem = \Aimeos\MShop\Coupon\Manager\Factory::createManager( $context )->createItem();
+		$couponItem = \Aimeos\MShop\Coupon\Manager\Factory::create( $context )->createItem();
 		$couponItem->setConfig( array( 'freeshipping.productcode' => 'U:SD' ) );
 
 		$this->object = new \Aimeos\MShop\Coupon\Provider\FreeShipping( $context, $couponItem, '90AB' );
 
 
-		$delPrice = \Aimeos\MShop\Price\Manager\Factory::createManager( $context )->createItem();
+		$delPrice = \Aimeos\MShop\Price\Manager\Factory::create( $context )->createItem();
 		$delPrice->setCosts( '5.00' );
 		$delPrice->setCurrencyId( 'EUR' );
 
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $context );
-		$manager = \Aimeos\MShop\Order\Manager\Factory::createManager( $context )
+		$priceManager = \Aimeos\MShop\Price\Manager\Factory::create( $context );
+		$manager = \Aimeos\MShop\Order\Manager\Factory::create( $context )
 			->getSubManager( 'base' )->getSubManager( 'service' );
 
 		$delivery = $manager->createItem();
@@ -52,9 +52,9 @@ class FreeShippingTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testAddCoupon()
+	public function testUpdate()
 	{
-		$this->object->addCoupon( $this->orderBase );
+		$this->object->update( $this->orderBase );
 		$coupons = $this->orderBase->getCoupons();
 
 		if( ( $product = reset( $coupons['90AB'] ) ) === false ) {
@@ -75,28 +75,15 @@ class FreeShippingTest extends \PHPUnit\Framework\TestCase
 	}
 
 
-	public function testDeleteCoupon()
-	{
-		$this->object->addCoupon( $this->orderBase );
-		$this->object->deleteCoupon( $this->orderBase );
-
-		$products = $this->orderBase->getProducts();
-		$coupons = $this->orderBase->getCoupons();
-
-		$this->assertEquals( 0, count( $products ) );
-		$this->assertArrayNotHasKey( '90AB', $coupons );
-	}
-
-
-	public function testAddCouponInvalidConfig()
+	public function testUpdateInvalidConfig()
 	{
 		$context = \TestHelperMShop::getContext();
 
-		$couponItem = \Aimeos\MShop\Coupon\Manager\Factory::createManager( \TestHelperMShop::getContext() )->createItem();
+		$couponItem = \Aimeos\MShop\Coupon\Manager\Factory::create( \TestHelperMShop::getContext() )->createItem();
 		$object = new \Aimeos\MShop\Coupon\Provider\FreeShipping( $context, $couponItem, '90AB' );
 
 		$this->setExpectedException( \Aimeos\MShop\Coupon\Exception::class );
-		$object->addCoupon( $this->orderBase );
+		$object->update( $this->orderBase );
 	}
 
 

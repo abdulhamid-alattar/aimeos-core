@@ -10,21 +10,12 @@
 namespace Aimeos\Controller\Jobs\Common\Factory;
 
 
-/**
- * Test class for \Aimeos\Controller\Jobs\Common\Factory\BaseTest.
- */
 class BaseTest extends \PHPUnit\Framework\TestCase
 {
 	private $context;
 	private $aimeos;
 
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 *
-	 * @access protected
-	 */
 	protected function setUp()
 	{
 		$this->aimeos = \TestHelperJobs::getAimeos();
@@ -34,7 +25,6 @@ class BaseTest extends \PHPUnit\Framework\TestCase
 		$config->set( 'controller/jobs/common/decorators/default', [] );
 		$config->set( 'controller/jobs/admin/decorators/global', [] );
 		$config->set( 'controller/jobs/admin/decorators/local', [] );
-
 	}
 
 

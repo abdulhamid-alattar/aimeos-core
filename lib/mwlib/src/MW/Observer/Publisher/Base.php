@@ -28,10 +28,12 @@ abstract class Base implements \Aimeos\MW\Observer\Publisher\Iface
 	 *
 	 * @param \Aimeos\MW\Observer\Listener\Iface $l Object implementing listener interface
 	 * @param string $action Name of the action to listen for
+	 * @return \Aimeos\MW\Observer\Publisher\Iface Publisher object for method chaining
 	 */
-	public function addListener( \Aimeos\MW\Observer\Listener\Iface $l, $action )
+	public function attach( \Aimeos\MW\Observer\Listener\Iface $l, $action )
 	{
 		$this->listeners[$action][] = $l;
+		return $this;
 	}
 
 
@@ -40,8 +42,9 @@ abstract class Base implements \Aimeos\MW\Observer\Publisher\Iface
 	 *
 	 * @param \Aimeos\MW\Observer\Listener\Iface $l Object implementing listener interface
 	 * @param string $action Name of the action to remove the listener from
+	 * @return \Aimeos\MW\Observer\Publisher\Iface Publisher object for method chaining
 	 */
-	public function removeListener( \Aimeos\MW\Observer\Listener\Iface $l, $action )
+	public function detach( \Aimeos\MW\Observer\Listener\Iface $l, $action )
 	{
 		if( isset( $this->listeners[$action] ) )
 		{
@@ -52,6 +55,20 @@ abstract class Base implements \Aimeos\MW\Observer\Publisher\Iface
 				}
 			}
 		}
+
+		return $this;
+	}
+
+
+	/**
+	 * Removes all attached listeners from the publisher
+	 *
+	 * @return \Aimeos\MW\Observer\Publisher\Iface Publisher object for method chaining
+	 */
+	public function off()
+	{
+		$this->listeners = [];
+		return $this;
 	}
 
 
@@ -59,30 +76,18 @@ abstract class Base implements \Aimeos\MW\Observer\Publisher\Iface
 	 * Sends updates to all listeners of the given action.
 	 *
 	 * @param string $action Name of the action
-	 * @param mixed|null $value Value or object given to the listeners
-	 * @return boolean Status of the operations
+	 * @param mixed $value Value or object given to the listeners
+	 * @return mixed Modified value parameter
 	 */
-	protected function notifyListeners( $action, $value = null )
+	protected function notify( $action, $value = null )
 	{
 		if( isset( $this->listeners[$action] ) )
 		{
-			foreach( $this->listeners[$action] as $key => $listener )
-			{
-				if( $listener->update( $this, $action, $value ) === false ) {
-					return false;
-				}
+			foreach( $this->listeners[$action] as $key => $listener ) {
+				$value = $listener->update( $this, $action, $value );
 			}
 		}
 
-		return true;
-	}
-
-
-	/**
-	 * Removes all attached listeners from the publisher
-	 */
-	protected function clearListeners()
-	{
-		$this->listeners = [];
+		return $value;
 	}
 }

@@ -13,7 +13,7 @@ namespace Aimeos\MW\Setup\Task;
 /**
  * Adds attribute test data and all items from other domains.
  */
-class MediaAddTestData extends \Aimeos\MW\Setup\Task\Base
+class MediaAddTestData extends \Aimeos\MW\Setup\Task\BaseAddTestData
 {
 	/**
 	 * Returns the list of task names which this task depends on.
@@ -22,18 +22,7 @@ class MediaAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return array List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class MediaAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding media test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'media.php';
@@ -54,9 +43,25 @@ class MediaAddTestData extends \Aimeos\MW\Setup\Task\Base
 			throw new \Aimeos\MShop\Exception( sprintf( 'No file "%1$s" found for media domain', $path ) );
 		}
 
+		$this->storeTypes( $testdata, ['media/type', 'media/lists/type'] );
 		$this->addMediaData( $testdata );
 
 		$this->status( 'done' );
+	}
+
+
+	/**
+	 * Returns the manager for the current setup task
+	 *
+	 * @return \Aimeos\MShop\Common\Manager\Iface Manager object
+	 */
+	protected function getManager( $domain )
+	{
+		if( $domain === 'media' ) {
+			return \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
+		}
+
+		return parent::getManager( $domain );
 	}
 
 
@@ -68,36 +73,14 @@ class MediaAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addMediaData( array $testdata )
 	{
-		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::createManager( $this->additional, 'Standard' );
-		$mediaTypeManager = $mediaManager->getSubManager( 'type', 'Standard' );
-
-		$mtypeIds = [];
-		$mtype = $mediaTypeManager->createItem();
-
+		$mediaManager = \Aimeos\MShop\Media\Manager\Factory::create( $this->additional, 'Standard' );
 		$mediaManager->begin();
 
-		foreach( $testdata['media/type'] as $key => $dataset )
-		{
-			$mtype->setId( null );
-			$mtype->setCode( $dataset['code'] );
-			$mtype->setDomain( $dataset['domain'] );
-			$mtype->setLabel( $dataset['label'] );
-			$mtype->setStatus( $dataset['status'] );
-
-			$mediaTypeManager->saveItem( $mtype );
-			$mtypeIds[$key] = $mtype->getId();
-		}
-
-		$media = $mediaManager->createItem();
 		foreach( $testdata['media'] as $key => $dataset )
 		{
-			if( !isset( $mtypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No media type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
-			$media->setId( null );
+			$media = $mediaManager->createItem();
 			$media->setLanguageId( $dataset['langid'] );
-			$media->setTypeId( $mtypeIds[$dataset['typeid']] );
+			$media->setType( $dataset['type'] );
 			$media->setDomain( $dataset['domain'] );
 			$media->setLabel( $dataset['label'] );
 			$media->setUrl( $dataset['link'] );

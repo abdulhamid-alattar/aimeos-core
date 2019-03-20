@@ -19,7 +19,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 	protected function setUp()
 	{
 		$this->editor = \TestHelperMShop::getContext()->getEditor();
-		$manager = \Aimeos\MShop\Customer\Manager\Factory::createManager( \TestHelperMShop::getContext(), 'Standard' );
+		$manager = \Aimeos\MShop\Customer\Manager\Factory::create( \TestHelperMShop::getContext(), 'Standard' );
 
 		$listManager = $manager->getSubManager( 'lists', 'Standard' );
 		$this->object = $listManager->getSubManager( 'type', 'Standard' );
@@ -34,15 +34,13 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testCleanup()
 	{
-		$this->object->cleanup( array( -1 ) );
+		$this->assertInstanceOf( \Aimeos\MShop\Common\Manager\Iface::class, $this->object->cleanup( [-1] ) );
 	}
 
 
 	public function testGetResourceType()
 	{
-		$result = $this->object->getResourceType();
-
-		$this->assertContains( 'customer/lists/type', $result );
+		$this->assertContains( 'customer/lists/type', $this->object->getResourceType() );
 	}
 
 
@@ -55,8 +53,7 @@ class StandardTest extends \PHPUnit\Framework\TestCase
 
 	public function testGetItem()
 	{
-		$search = $this->object->createSearch();
-		$search->setSlice( 0, 1 );
+		$search = $this->object->createSearch()->setSlice( 0, 1 );
 		$results = $this->object->searchItems( $search );
 
 		if( ( $expected = reset( $results ) ) === false ) {

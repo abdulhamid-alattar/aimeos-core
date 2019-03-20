@@ -63,11 +63,9 @@ trait Traits
 	 */
 	public function addListItem( $domain, \Aimeos\MShop\Common\Item\Lists\Iface $listItem, \Aimeos\MShop\Common\Item\Iface $refItem = null )
 	{
-		$num = $this->listMax++;
-
 		if( $refItem !== null )
 		{
-			$id = $refItem->getId() ?: '#' . $num;
+			$id = $refItem->getId() ?: '#' . $this->listMax++;
 			$listItem->setRefId( $id );
 
 			if( $refItem instanceof \Aimeos\MShop\Common\Item\Domain\Iface ) {
@@ -77,7 +75,7 @@ trait Traits
 			$this->listRefItems[$domain][$id] = $refItem;
 		}
 
-		$id = $listItem->getId() ?: '_' . $num;
+		$id = $listItem->getId() ?: '_' . $domain . '_' . $listItem->getType() . '_' . $listItem->getRefId();
 		$this->listItems[$domain][$id] = $listItem->setDomain( $domain )->setRefItem( $refItem );
 
 		return $this;
@@ -193,21 +191,20 @@ trait Traits
 		$result = [];
 		$this->prepareListItems();
 
-		$iface = \Aimeos\MShop\Common\Item\Typeid\Iface::class;
+		$iface = \Aimeos\MShop\Common\Item\TypeRef\Iface::class;
 		$listTypes = ( is_array( $listtype ) ? $listtype : array( $listtype ) );
 		$types = ( is_array( $type ) ? $type : array( $type ) );
 
 
 		foreach( $this->listItems as $dname => $list )
 		{
-			if( is_array( $domain ) && !in_array( $dname, $domain ) || $domain !== null && $dname !== $domain ) {
+			if( is_array( $domain ) && !in_array( $dname, $domain ) || is_string( $domain ) && $dname !== $domain ) {
 				continue;
 			}
 
 			foreach( $list as $id => $item )
 			{
 				$refItem = $item->getRefItem();
-				$iface = \Aimeos\MShop\Common\Item\Typeid\Iface::class;
 
 				if( $type && ( !$refItem || !($refItem instanceof $iface) || !in_array( $refItem->getType(), $types ) ) ) {
 					continue;
@@ -293,6 +290,14 @@ trait Traits
 
 		return $this->getLabel();
 	}
+
+
+	/**
+	 * Returns the item type
+	 *
+	 * @return string Item type, subtypes are separated by slashes
+	 */
+	abstract public function getResourceType();
 
 
 	/**

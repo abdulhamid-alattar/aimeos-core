@@ -38,7 +38,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 * @param \Aimeos\MW\Setup\DBSchema\Iface $schema Database schema object
 	 * @param \Aimeos\MW\DB\Connection\Iface $conn Database connection
 	 * @param mixed $additional Additionally provided information for the setup tasks if required
-	 * @param array $paths List of paths of the setup tasks ordered by dependencies
+	 * @param string[] $paths List of paths of the setup tasks ordered by dependencies
 	 */
 	public function __construct( \Aimeos\MW\Setup\DBSchema\Iface $schema, \Aimeos\MW\DB\Connection\Iface $conn,
 		$additional = null, array $paths = [] )
@@ -48,6 +48,28 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 		$this->conn = $conn;
 		$this->paths = $paths;
 		$this->additional = $additional;
+	}
+
+
+	/**
+	 * Returns the list of task names which this task depends on
+	 *
+	 * @return string[] List of task names
+	 */
+	public function getPreDependencies()
+	{
+		return [];
+	}
+
+
+	/**
+	 * Returns the list of task names which depends on this task.
+	 *
+	 * @return string[] List of task names
+	 */
+	public function getPostDependencies()
+	{
+		return [];
 	}
 
 
@@ -95,7 +117,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	/**
 	 * Sets the associative list of schemas with the resource name as key.
 	 *
-	 * @param array $schemas Associative list of schemas
+	 * @param \Aimeos\MW\Setup\DBSchema\Iface[] $schemas Associative list of schemas
 	 */
 	public function setSchemas( array $schemas )
 	{
@@ -106,9 +128,10 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	/**
 	 * Returns the database connection
 	 *
+	 * @param string $name Name from the resource configuration
 	 * @return \Aimeos\MW\DB\Connection\Iface Database connection
 	 */
-	protected function acquire( $name = 'db')
+	protected function acquire( $name = 'db' )
 	{
 		return $this->dbm->acquire( $name );
 	}
@@ -117,7 +140,8 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	/**
 	 * Releases the database connection
 	 *
-	 * @param \Aimeos\MW\DB\Connection\Iface Database connection
+	 * @param \Aimeos\MW\DB\Connection\Iface $conn Database connection
+	 * @param string $name Name from the resource configuration
 	 */
 	protected function release( \Aimeos\MW\DB\Connection\Iface $conn, $name = 'db' )
 	{
@@ -142,7 +166,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	/**
 	 * Executes a list of given SQL statements.
 	 *
-	 * @param array $list List of SQL statement to execute
+	 * @param string[] $list List of SQL statement to execute
 	 * @param string $name Name from the resource configuration
 	 */
 	protected function executeList( array $list, $name = 'db' )
@@ -154,23 +178,6 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 		}
 
 		$this->release( $conn, $name );
-	}
-
-
-	/**
-	 * Returns the connection specified by the given resource name.
-	 *
-	 * @param string $name Name from resource configuration
-	 * @return \Aimeos\MW\DB\Connection\Iface
-	 * @deprecated Use acquire() and release() instead
-	 */
-	protected function getConnection( $name )
-	{
-		if( !isset( $this->connections[$name] ) ) {
-			return $this->connections[$name] = $this->dbm->acquire( $name );
-		}
-
-		return $this->connections[$name]->connect();
 	}
 
 
@@ -193,7 +200,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	/**
 	 * Returns the setup task paths ordered by their dependencies
 	 *
-	 * @return array List of file system paths
+	 * @return string[] List of file system paths
 	 */
 	protected function getSetupPaths()
 	{
@@ -211,17 +218,29 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 */
 	protected function getValue( $sql, $column, $name = 'db' )
 	{
-		$result = $this->getConnection( $name )->create( $sql )->execute();
+		$conn = $this->acquire( $name );
 
-		if( ( $row = $result->fetch() ) === false ) {
-			throw new \Aimeos\MW\Setup\Exception( sprintf( 'No rows found: %1$s', $sql ) );
+		try
+		{
+			$result = $conn->create( $sql )->execute();
+
+			if( ( $row = $result->fetch() ) === false ) {
+				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No rows found: %1$s', $sql ) );
+			}
+
+			$result->finish();
+
+			if( array_key_exists( $column, $row ) === false ) {
+				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No column "%1$s" found: %2$s', $column, $sql ) );
+			}
+
+			$this->release( $conn, $name );
 		}
-
-		if( array_key_exists( $column, $row ) === false ) {
-			throw new \Aimeos\MW\Setup\Exception( sprintf( 'No column "%1$s" found: %2$s', $column, $sql ) );
+		catch( \Exception $e )
+		{
+			$this->release( $conn, $name );
+			throw $e;
 		}
-
-		$result->finish();
 
 		return $row[$column];
 	}
@@ -232,7 +251,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 *
 	 * @param string $msg Current message
 	 * @param integer $level Indent level of the message (default: 0 )
-	 * @param string $status|null Current status
+	 * @param string|null $status Current status
 	 */
 	protected function msg( $msg, $level = 0, $status = null )
 	{
@@ -241,7 +260,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 			$pre .= ' ';
 		}
 
-		echo str_pad( $pre . $msg, 70 ) . ( $status ? $status . PHP_EOL : '' );
+		echo str_pad( $pre . $msg, 70 ) . ( $status !== null ? $status . PHP_EOL : '' );
 	}
 
 
@@ -260,7 +279,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 * Extracts the table definitions from the given content.
 	 *
 	 * @param string $content Content of the file to parse
-	 * @return array Associative list of table names with table create statements ordered like in the file
+	 * @return string[] Associative list of table names with table create statements ordered like in the file
 	 */
 	protected function getTableDefinitions( $content )
 	{
@@ -284,7 +303,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 * Extracts the index definitions from the given content.
 	 *
 	 * @param string $content Content of the file to parse
-	 * @return array Associative list of index names with index create statements ordered like in the file
+	 * @return string[] Associative list of index names with index create statements ordered like in the file
 	 */
 	protected function getIndexDefinitions( $content )
 	{
@@ -308,7 +327,7 @@ abstract class Base implements \Aimeos\MW\Setup\Task\Iface
 	 * Extracts the trigger definitions from the given content.
 	 *
 	 * @param string $content Content of the file to parse
-	 * @return array Associative list of trigger names with trigger create statements ordered like in the file
+	 * @return string[] Associative list of trigger names with trigger create statements ordered like in the file
 	 */
 	protected function getTriggerDefinitions( $content )
 	{

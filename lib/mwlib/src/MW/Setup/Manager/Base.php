@@ -26,7 +26,7 @@ abstract class Base implements \Aimeos\MW\Setup\Manager\Iface
 	/**
 	 * Initializes the object and sets up the autoloader
 	 *
-	 * @param array $taskPaths List of directories containing the setup tasks
+	 * @param string[] $taskPaths List of directories containing the setup tasks
 	 */
 	public function __construct( array $taskPaths )
 	{
@@ -73,7 +73,7 @@ abstract class Base implements \Aimeos\MW\Setup\Manager\Iface
 	 * @param string $dbname Name of the database that will be used
 	 * @return \Aimeos\MW\Setup\DBSchema\Iface Database schema object
 	 */
-	protected  function createSchema( \Aimeos\MW\DB\Manager\Iface $dbm, $rname, $adapter, $dbname )
+	protected function createSchema( \Aimeos\MW\DB\Manager\Iface $dbm, $rname, $adapter, $dbname )
 	{
 		if( empty( $adapter ) || ctype_alnum( $adapter ) === false ) {
 			throw new \Aimeos\MW\Setup\Exception( sprintf( 'Invalid database adapter "%1$s"', $adapter ) );
@@ -105,7 +105,7 @@ abstract class Base implements \Aimeos\MW\Setup\Manager\Iface
 	/**
 	 * Creates the tasks from the given directories.
 	 *
-	 * @param array $paths List of paths containing setup task classes
+	 * @param string[] $paths List of paths containing setup task classes
 	 * @param \Aimeos\MW\Setup\DBSchema\Iface $schema Database schema object
 	 * @param \Aimeos\MW\DB\Connection\Iface $conn Database connection object
 	 * @param mixed $additional Additional data that should be handed over to the setup tasks

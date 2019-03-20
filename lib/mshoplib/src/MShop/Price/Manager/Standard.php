@@ -38,13 +38,12 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'price.typeid' => array(
+		'price.type' => array(
 			'label' => 'Price type ID',
-			'code' => 'price.typeid',
-			'internalcode' => 'mpri."typeid"',
+			'code' => 'price.type',
+			'internalcode' => 'mpri."type"',
 			'type' => 'string',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
-			'public' => false,
 		),
 		'price.currencyid' => array(
 			'code' => 'price.currencyid',
@@ -130,6 +129,17 @@ class Standard
 			'type' => 'string',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
+		'price:has' => array(
+			'code' => 'price:has()',
+			'internalcode' => '(
+				SELECT mprili_has."id" FROM mshop_price_list AS mprili_has
+				WHERE mpri."id" = mprili_has."parentid" AND :site AND :key LIMIT 1
+			)',
+			'label' => 'Price has list item, parameter(<domain>[,<list type>[,<reference ID>)]]',
+			'type' => 'null',
+			'internaltype' => 'null',
+			'public' => false,
+		),
 	);
 
 	private $currencyId;
@@ -159,15 +169,45 @@ class Standard
 		 * @since 2016.02
 		 */
 		$this->taxflag = $context->getConfig()->get( 'mshop/price/taxflag', true );
-
 		$this->currencyId = $context->getLocale()->getCurrencyId();
+
+		$self = $this;
+		$locale = $context->getLocale();
+
+		$level = \Aimeos\MShop\Locale\Manager\Base::SITE_ALL;
+		$level = $context->getConfig()->get( 'mshop/price/manager/sitemode', $level );
+
+		$siteIds = [$locale->getSiteId()];
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_PATH ) {
+			$siteIds = array_merge( $siteIds, $locale->getSitePath() );
+		}
+
+		if( $level & \Aimeos\MShop\Locale\Manager\Base::SITE_SUBTREE ) {
+			$siteIds = array_merge( $siteIds, $locale->getSiteSubTree() );
+		}
+
+
+		$this->searchConfig['price:has']['function'] = function( &$source, array $params ) use ( $self, $siteIds ) {
+
+			foreach( $params as $key => $param ) {
+				$params[$key] = trim( $param, '\'' );
+			}
+
+			$source = str_replace( ':site', $self->toExpression( 'mprili_has."siteid"', $siteIds ), $source );
+			$str = $self->toExpression( 'mprili_has."key"', join( '|', $params ), isset( $params[2] ) ? '==' : '=~' );
+			$source = str_replace( ':key', $str, $source );
+
+			return $params;
+		};
 	}
 
 
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param array $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Price\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -176,31 +216,23 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/price/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/price/manager/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Price\Item\Iface New price item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$locale = $this->getContext()->getLocale();
 		$values['price.siteid'] = $locale->getSiteId();
 
 		if( $locale->getCurrencyId() !== null ) {
 			$values['price.currencyid'] = $locale->getCurrencyId();
-		}
-
-		if( $type !== null )
-		{
-			$values['price.typeid'] = $this->getTypeId( $type, $domain );
-			$values['price.type'] = $type;
 		}
 
 		return $this->createItemBase( $values );
@@ -212,13 +244,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/price/manager/submanagers';
-
-		return $this->getResourceTypeBase( 'price', $path, array( 'type', 'lists' ), $withsub );
+		return $this->getResourceTypeBase( 'price', $path, ['lists'], $withsub );
 	}
 
 
@@ -226,7 +257,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -249,14 +280,15 @@ class Standard
 		 */
 		$path = 'mshop/price/manager/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'type', 'lists' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Price\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -291,14 +323,15 @@ class Standard
 		 * @see mshop/price/manager/standard/count/ansi
 		 */
 		$path = 'mshop/price/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
 	/**
 	 * Returns the price item object specificed by its ID.
 	 *
-	 * @param integer $id Unique price ID referencing an existing price
+	 * @param string $id Unique price ID referencing an existing price
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Price\Item\Iface $item Returns the price item of the given id
@@ -315,7 +348,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MShop\Price\Item\Iface $item Price item object
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Price\Item\Iface Updated item including the generated ID
 	 * @throws \Aimeos\MShop\Price\Exception If price couldn't be saved
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
@@ -415,7 +448,7 @@ class Standard
 
 			$stmt = $this->getCachedStatement( $conn, $path );
 
-			$stmt->bind( 1, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 1, $item->getType() );
 			$stmt->bind( 2, $item->getCurrencyId() );
 			$stmt->bind( 3, $item->getDomain() );
 			$stmt->bind( 4, $item->getLabel() );
@@ -502,7 +535,7 @@ class Standard
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$map = $typeIds = [];
+		$map = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -659,10 +692,8 @@ class Standard
 
 			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
 
-			while( ( $row = $results->fetch() ) !== false )
-			{
+			while( ( $row = $results->fetch() ) !== false ) {
 				$map[$row['price.id']] = $row;
-				$typeIds[$row['price.typeid']] = null;
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -673,33 +704,15 @@ class Standard
 			throw $e;
 		}
 
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', 'price.type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[$row['price.typeid']] ) )
-				{
-					$map[$id]['price.type'] = $typeItems[$row['price.typeid']]->getCode();
-					$map[$id]['price.typename'] = $typeItems[$row['price.typeid']]->getName();
-				}
-			}
-		}
-
 		return $this->buildItems( $map, null, 'price' );
 	}
 
 
 	/**
-	 * creates a search object and sets base criteria
+	 * Creates a search critera object
 	 *
-	 * @param boolean $default Prepopulate object with default criterias
-	 * @return \Aimeos\MW\Criteria\Iface
+	 * @param boolean $default Add default criteria (optional)
+	 * @return \Aimeos\MW\Criteria\Iface New search criteria object
 	 */
 	public function createSearch( $default = false )
 	{
@@ -742,8 +755,8 @@ class Standard
 	 * Creates a new price item
 	 *
 	 * @param array $values List of attributes for price item
-	 * @param array $listItems List of items implementing \Aimeos\MShop\Common\Item\Lists\Iface
-	 * @param array $refItems List of items implementing \Aimeos\MShop\Common\Item\Iface
+	 * @param \Aimeos\MShop\Common\Item\Lists\Iface[] $listItems List of list items
+	 * @param \Aimeos\MShop\Common\Item\Iface[] $refItems List of referenced items
 	 * @return \Aimeos\MShop\Price\Item\Iface New price item
 	 */
 	protected function createItemBase( array $values = [], array $listItems = [], array $refItems = [] )

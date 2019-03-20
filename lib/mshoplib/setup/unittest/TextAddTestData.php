@@ -22,18 +22,7 @@ class TextAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return ['CatalogRebuildTestIndex'];
+		return ['MShopSetLocale'];
 	}
 
 
@@ -45,7 +34,7 @@ class TextAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding text test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
 		$ds = DIRECTORY_SEPARATOR;
 		$path = __DIR__ . $ds . 'data' . $ds . 'text.php';
@@ -68,10 +57,9 @@ class TextAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	private function addTextData( array $testdata )
 	{
-		$textManager = \Aimeos\MShop\Text\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$textManager = \Aimeos\MShop\Text\Manager\Factory::create( $this->additional, 'Standard' );
 		$textTypeManager = $textManager->getSubManager( 'type', 'Standard' );
 
-		$ttypeIds = [];
 		$ttype = $textTypeManager->createItem();
 
 		$textManager->begin();
@@ -85,19 +73,14 @@ class TextAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$ttype->setStatus( $dataset['status'] );
 
 			$textTypeManager->saveItem( $ttype );
-			$ttypeIds[$key] = $ttype->getId();
 		}
 
 		$text = $textManager->createItem();
 		foreach( $testdata['text'] as $key => $dataset )
 		{
-			if( !isset( $ttypeIds[$dataset['typeid']] ) ) {
-				throw new \Aimeos\MW\Setup\Exception( sprintf( 'No text type ID found for "%1$s"', $dataset['typeid'] ) );
-			}
-
 			$text->setId( null );
 			$text->setLanguageId( $dataset['langid'] );
-			$text->setTypeId( $ttypeIds[$dataset['typeid']] );
+			$text->setType( $dataset['type'] );
 			$text->setDomain( $dataset['domain'] );
 			$text->setLabel( $dataset['label'] );
 			$text->setContent( $dataset['content'] );

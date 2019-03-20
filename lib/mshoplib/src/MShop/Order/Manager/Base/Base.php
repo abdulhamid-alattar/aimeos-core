@@ -41,6 +41,23 @@ abstract class Base
 
 
 	/**
+	 * Returns a new and empty order base item (shopping basket).
+	 *
+	 * @param \Aimeos\MShop\Price\Item\Iface $price Default price of the basket (usually 0.00)
+	 * @param \Aimeos\MShop\Locale\Item\Iface $locale Locale item containing the site, language and currency
+	 * @param array $values Associative list of key/value pairs containing, e.g. the order or user ID
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $products List of ordered product items
+	 * @param \Aimeos\MShop\Order\Item\Base\Address\Iface[] $addresses List of order address items
+	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface[] $services List of order serviceitems
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $coupons Associative list of coupon codes as keys and items as values
+	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base object
+	 */
+	abstract protected function createItemBase( \Aimeos\MShop\Price\Item\Iface $price, \Aimeos\MShop\Locale\Item\Iface $locale,
+		array $values = [], array $products = [], array $addresses = [],
+		array $services = [], array $coupons = [] );
+
+
+	/**
 	 * Returns the current basket of the customer.
 	 *
 	 * @param string $type Basket type if a customer can have more than one basket
@@ -70,7 +87,7 @@ abstract class Base
 			return $this->getObject()->createItem();
 		}
 
-		\Aimeos\MShop\Factory::createManager( $context, 'plugin' )->register( $order, 'order' );
+		\Aimeos\MShop::create( $context, 'plugin' )->register( $order, 'order' );
 
 		return $order;
 	}
@@ -105,6 +122,7 @@ abstract class Base
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $order Shopping basket
 	 * @param string $type Order type if a customer can have more than one order at once
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	public function setSession( \Aimeos\MShop\Order\Item\Base\Iface $order, $type = 'default' )
 	{
@@ -117,6 +135,8 @@ abstract class Base
 		$key = 'aimeos/basket/content-' . $sitecode . '-' . $language . '-' . $currency . '-' . strval( $type );
 
 		$session->set( $key, serialize( clone $order ) );
+
+		return $this;
 	}
 
 
@@ -126,7 +146,7 @@ abstract class Base
 	 *
 	 * @param integer $lock Lock value (@see \Aimeos\MShop\Order\Manager\Base\Base)
 	 * @param string $type Order type if a customer can have more than one order at once
-	 * @throws \Aimeos\MShop\Order\Exception if the lock value is invalid
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	public function setSessionLock( $lock, $type = 'default' )
 	{
@@ -141,64 +161,8 @@ abstract class Base
 		$key = 'aimeos/basket/lock-' . $sitecode . '-' . $language . '-' . $currency . '-' . strval( $type );
 
 		$session->set( $key, strval( $lock ) );
-	}
 
-
-	/**
-	 * Creates the order base item objects from the map and adds the referenced items
-	 *
-	 * @param array Associative list of order base IDs as keys and list of price/locale/row as values
-	 * @param string[] $ref Domain items that should be added as well, e.g.
-	 *	"order/base/address", "order/base/coupon", "order/base/product", "order/base/service"
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface[] Associative list of order base IDs as keys and items as values
-	 */
-	protected function buildItems( array $map, array $ref )
-	{
-		$items = [];
-		$baseIds = array_keys( $map );
-		$addressMap = $couponMap = $productMap = $serviceMap = [];
-
-		if( in_array( 'order/base/address', $ref ) ) {
-			$addressMap = $this->getAddresses( $baseIds );
-		}
-
-		if( in_array( 'order/base/product', $ref ) ) {
-			$productMap = $this->getProducts( $baseIds );
-		}
-
-		if( in_array( 'order/base/coupon', $ref ) ) {
-			$couponMap = $this->getCoupons( $baseIds, false, $productMap );
-		}
-
-		if( in_array( 'order/base/service', $ref ) ) {
-			$serviceMap = $this->getServices( $baseIds );
-		}
-
-		foreach( $map as $id => $list )
-		{
-			list( $price, $locale, $row ) = $list;
-			$addresses = $coupons = $products = $services = [];
-
-			if( isset( $addressMap[$id] ) ) {
-				$addresses = $addressMap[$id];
-			}
-
-			if( isset( $couponMap[$id] ) ) {
-				$coupons = $couponMap[$id];
-			}
-
-			if( isset( $productMap[$id] ) ) {
-				$products = $productMap[$id];
-			}
-
-			if( isset( $serviceMap[$id] ) ) {
-				$services = $serviceMap[$id];
-			}
-
-			$items[$id] = $this->createItemBase( $price, $locale, $row, $products, $addresses, $services, $coupons );
-		}
-
-		return $items;
+		return $this;
 	}
 
 
@@ -222,30 +186,9 @@ abstract class Base
 
 
 	/**
-	 * Returns a new and empty order base item (shopping basket).
-	 *
-	 * @param \Aimeos\MShop\Price\Item\Iface $price Default price of the basket (usually 0.00)
-	 * @param \Aimeos\MShop\Locale\Item\Iface $locale Locale item containing the site, language and currency
-	 * @param array $values Associative list of key/value pairs containing, e.g. the order or user ID
-	 * @param array $products List of ordered products implementing \Aimeos\MShop\Order\Item\Base\Product\Iface
-	 * @param array $addresses List of order addresses implementing \Aimeos\MShop\Order\Item\Base\Address\Iface
-	 * @param array $services List of order services implementing \Aimeos\MShop\Order\Item\Base\Service\Iface
-	 * @param array $coupons Associative list of coupon codes as keys and ordered products implementing \Aimeos\MShop\Order\Item\Base\Product\Iface as values
-	 * @return \Aimeos\MShop\Order\Item\Base\Iface Order base object
-	 */
-	protected function createItemBase( \Aimeos\MShop\Price\Item\Iface $price, \Aimeos\MShop\Locale\Item\Iface $locale,
-		array $values = [], array $products = [], array $addresses = [],
-		array $services = [], array $coupons = [] )
-	{
-		return new \Aimeos\MShop\Order\Item\Base\Standard( $price, $locale,
-			$values, $products, $addresses, $services, $coupons );
-	}
-
-
-	/**
 	 * Returns the address item map for the given order base IDs
 	 *
-	 * @param string[] List of order base IDs
+	 * @param string[] $baseIds List of order base IDs
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
 	 * @return array Multi-dimensional associative list of order base IDs as keys and order address type/item pairs as values
 	 */
@@ -256,8 +199,6 @@ abstract class Base
 
 		$criteria = $manager->createSearch()->setSlice( 0, 0x7fffffff );
 		$criteria->setConditions( $criteria->compare( '==', 'order.base.address.baseid', $baseIds ) );
-		$sort = [$criteria->sort( '+', 'order.base.address.baseid' ), $criteria->sort( '+', 'order.base.address.type' )];
-		$criteria->setSortations( $sort );
 
 		foreach( $manager->searchItems( $criteria ) as $item )
 		{
@@ -267,7 +208,7 @@ abstract class Base
 				$item->setId( null );
 			}
 
-			$items[$item->getBaseId()][$item->getType()] = $item;
+			$items[$item->getBaseId()][] = $item;
 		}
 
 		return $items;
@@ -277,9 +218,9 @@ abstract class Base
 	/**
 	 * Returns the coupon map for the given order base IDs
 	 *
-	 * @param string[] List of order base IDs
+	 * @param string[] $baseIds List of order base IDs
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
-	 * @param array Associative list of base IDs and order product ID/item pairs as values
+	 * @param array $products Associative list of base IDs and order product ID/item pairs as values
 	 * @return array Multi-dimensional associative list of order base IDs as keys and coupons with product items as values
 	 */
 	protected function getCoupons( array $baseIds, $fresh = false, array $products = [] )
@@ -294,7 +235,7 @@ abstract class Base
 
 		foreach( $manager->searchItems( $criteria ) as $item )
 		{
-			if( !isset( $items[$item->getCode()] ) ) {
+			if( !isset( $map[$item->getBaseId()][$item->getCode()] ) ) {
 				$map[$item->getBaseId()][$item->getCode()] = [];
 			}
 
@@ -310,7 +251,7 @@ abstract class Base
 	/**
 	 * Retrieves the ordered products from the storage.
 	 *
-	 * @param array $baseIds List of order base IDs
+	 * @param string[] $baseIds List of order base IDs
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
 	 * @return array Multi-dimensional associative list of order base IDs as keys and order product
 	 *	IDs/items pairs in reversed order as values
@@ -380,7 +321,7 @@ abstract class Base
 	/**
 	 * Retrieves the order services from the storage.
 	 *
-	 * @param array $baseIds List of order base IDs
+	 * @param string[] $baseIds List of order base IDs
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
 	 * @return array Multi-dimensional associative list of order base IDs as keys and service type/items pairs as values
 	 */
@@ -418,7 +359,7 @@ abstract class Base
 	/**
 	 * Load the basket item for the given ID.
 	 *
-	 * @param integer $id Unique order base ID
+	 * @param string $id Unique order base ID
 	 * @param \Aimeos\MShop\Price\Item\Iface $price Price object with total order value
 	 * @param \Aimeos\MShop\Locale\Item\Iface $localeItem Locale object of the order
 	 * @param array $row Array of values with all relevant order information
@@ -457,7 +398,7 @@ abstract class Base
 	/**
 	 * Create a new basket item as a clone from an existing order ID.
 	 *
-	 * @param integer $id Unique order base ID
+	 * @param string $id Unique order base ID
 	 * @param \Aimeos\MShop\Price\Item\Iface $price Price object with total order value
 	 * @param \Aimeos\MShop\Locale\Item\Iface $localeItem Locale object of the order
 	 * @param array $row Array of values with all relevant order information
@@ -490,7 +431,7 @@ abstract class Base
 		}
 
 		foreach( $addresses as $item ) {
-			$basket->setAddress( $item, $item->getType() );
+			$basket->addAddress( $item, $item->getType() );
 		}
 
 		foreach( $services as $item ) {
@@ -504,9 +445,9 @@ abstract class Base
 	/**
 	 * Retrieves the addresses of the order from the storage.
 	 *
-	 * @param integer $id Order base ID
+	 * @param string $id Order base ID
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
-	 * @return array List of items implementing \Aimeos\MShop\Order\Item\Address\Iface
+	 * @return \Aimeos\MShop\Order\Item\Address\Iface[] List of order address items
 	 */
 	protected function loadAddresses( $id, $fresh )
 	{
@@ -523,11 +464,11 @@ abstract class Base
 	/**
 	 * Retrieves the coupons of the order from the storage.
 	 *
-	 * @param integer $id Order base ID
+	 * @param string $id Order base ID
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
-	 * @param array Multi-dimensional associative list of order base IDs as keys and order product
+	 * @param array $products Multi-dimensional associative list of order base IDs as keys and order product
 	 *	IDs/items pairs in reversed order as values
-	 * @return array Associative list of coupon codes as keys and items implementing \Aimeos\MShop\Order\Item\Product\Iface
+	 * @return \Aimeos\MShop\Order\Item\Product\Iface[] Associative list of coupon codes as keys and items as values
 	 */
 	protected function loadCoupons( $id, $fresh, array $products )
 	{
@@ -544,7 +485,7 @@ abstract class Base
 	/**
 	 * Retrieves the ordered products from the storage.
 	 *
-	 * @param integer $id Order base ID
+	 * @param string $id Order base ID
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
 	 * @return \Aimeos\MShop\Order\Item\Product\Iface[] List of product items
 	 */
@@ -563,9 +504,9 @@ abstract class Base
 	/**
 	 * Retrieves the services of the order from the storage.
 	 *
-	 * @param integer $id Order base ID
+	 * @param string $id Order base ID
 	 * @param boolean $fresh Create new items by copying the existing ones and remove their IDs
-	 * @return array List of items implementing \Aimeos\MShop\Order\Item\Service\Iface
+	 * @return \Aimeos\MShop\Order\Item\Service\Iface[] List of order service items
 	 */
 	protected function loadServices( $id, $fresh )
 	{
@@ -583,6 +524,7 @@ abstract class Base
 	 * Saves the ordered products to the storage.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Basket containing ordered products or bundles
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	protected function storeProducts( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
@@ -632,6 +574,8 @@ abstract class Base
 				}
 			}
 		}
+
+		return $this;
 	}
 
 
@@ -639,17 +583,20 @@ abstract class Base
 	 * Saves the addresses of the order to the storage.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Basket containing address items
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	protected function storeAddresses( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
 		$manager = $this->getObject()->getSubManager( 'address' );
 
-		foreach( $basket->getAddresses() as $type => $item )
+		foreach( $basket->getAddresses() as $type => $list )
 		{
-			$item->setBaseId( $basket->getId() );
-			$item->setType( $type );
-			$manager->saveItem( $item );
+			foreach( $list as $item ) {
+				$manager->saveItem( $item->setBaseId( $basket->getId() ) );
+			}
 		}
+
+		return $this;
 	}
 
 
@@ -657,6 +604,7 @@ abstract class Base
 	 * Saves the coupons of the order to the storage.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Basket containing coupon items
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	protected function storeCoupons( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
@@ -683,6 +631,8 @@ abstract class Base
 				$manager->saveItem( $item );
 			}
 		}
+
+		return $this;
 	}
 
 
@@ -690,6 +640,7 @@ abstract class Base
 	 * Saves the services of the order to the storage.
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Iface $basket Basket containing service items
+	 * @return \Aimeos\MShop\Order\Manager\Base\Iface Manager object for chaining method calls
 	 */
 	protected function storeServices( \Aimeos\MShop\Order\Item\Base\Iface $basket )
 	{
@@ -700,8 +651,7 @@ abstract class Base
 		{
 			foreach( $list as $item )
 			{
-				$item->setBaseId( $basket->getId() );
-				$item->setType( $type );
+				$item->setBaseId( $basket->getId() )->setType( $type );
 				$item = $manager->saveItem( $item );
 
 				foreach( $item->getAttributeItems() as $attribute )
@@ -714,5 +664,7 @@ abstract class Base
 				}
 			}
 		}
+
+		return $this;
 	}
 }

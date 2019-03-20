@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @copyright Metaways Infosystems GmbH, 2013
  * @license LGPLv3, http://opensource.org/licenses/LGPL-3.0
+ * @copyright Metaways Infosystems GmbH, 2013
  * @copyright Aimeos (aimeos.org), 2015-2018
  * @package Controller
  * @subpackage Jobs
@@ -13,7 +13,7 @@ namespace Aimeos\Controller\Jobs\Common\Factory;
 
 
 /**
- * Common methods for all factories.
+ * Common methods for all controller factories.
  *
  * @package Controller
  * @subpackage Jobs
@@ -25,8 +25,6 @@ abstract class Base
 
 	/**
 	 * Injects a controller object.
-	 * The object is returned via createController() if an instance of the class
-	 * with the name name is requested.
 	 *
 	 * @param string $classname Full name of the class for which the object should be returned
 	 * @param \Aimeos\Controller\Jobs\Iface|null $controller Frontend controller object
@@ -152,7 +150,7 @@ abstract class Base
 	 * @param string $interface Name of the controller interface
 	 * @return \Aimeos\Controller\Jobs\Iface Controller object
 	 */
-	protected static function createControllerBase( \Aimeos\MShop\Context\Item\Iface $context, \Aimeos\Bootstrap $aimeos,
+	protected static function createController( \Aimeos\MShop\Context\Item\Iface $context, \Aimeos\Bootstrap $aimeos,
 		$classname, $interface )
 	{
 		if( isset( self::$objects[$classname] ) ) {

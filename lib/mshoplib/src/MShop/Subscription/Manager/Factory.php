@@ -30,7 +30,7 @@ class Factory
 	 * @throws \Aimeos\MShop\Subscription\Exception|\Aimeos\MShop\Exception If requested manager
 	 * implementation couldn't be found or initialisation fails
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/subscription/manager/name
 		 * Class name of the used subscription manager implementation
@@ -78,7 +78,7 @@ class Factory
 		$iface = \Aimeos\MShop\Subscription\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Subscription\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/subscription/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the subscription manager

@@ -29,7 +29,7 @@ class Factory
 	 * @param string|null $name Manager name
 	 * @return \Aimeos\MAdmin\Job\Manager\Iface Job manager object
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** madmin/job/manager/name
 		 * Class name of the used job manager implementation
@@ -77,7 +77,7 @@ class Factory
 		$iface = \Aimeos\MAdmin\Job\Manager\Iface::class;
 		$classname = '\Aimeos\MAdmin\Job\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** madmin/job/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the job manager

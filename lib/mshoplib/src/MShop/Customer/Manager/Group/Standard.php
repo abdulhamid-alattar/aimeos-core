@@ -94,7 +94,8 @@ class Standard
 	/**
 	 * Removes old entries from the database
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Customer\Manager\Group\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
@@ -103,19 +104,17 @@ class Standard
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/customer/manager/group/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/customer/manager/group/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Customer\Item\Group\Iface New customer group item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['customer.group.siteid'] = $this->getContext()->getLocale()->getSiteId();
 		return $this->createItemBase( $values );
@@ -126,12 +125,11 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/customer/manager/group/submanagers';
-
 		return $this->getResourceTypeBase( 'customer/group', $path, [], $withsub );
 	}
 
@@ -140,7 +138,7 @@ class Standard
 	 * Returns the attributes that can be used for searching
 	 *
 	 * @param boolean $withsub Return attributes of sub-managers too if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -170,7 +168,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by their IDs
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Customer\Manager\Group\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -205,7 +204,8 @@ class Standard
 		 * @see mshop/customer/manager/group/standard/count/ansi
 		 */
 		$path = 'mshop/customer/manager/group/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -228,7 +228,7 @@ class Standard
 	/**
 	 * Returns the customer group item object specificed by its ID
 	 *
-	 * @param integer $id Unique customer ID referencing an existing customer group
+	 * @param string $id Unique customer ID referencing an existing customer group
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Customer\Item\Group\Iface Returns the customer group item for the given ID
@@ -245,7 +245,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MShop\Customer\Item\Group\Iface $item Customer group item
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Customer\Item\Group\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -423,7 +423,7 @@ class Standard
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$map = [];
+		$items = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -550,7 +550,7 @@ class Standard
 			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
 
 			while( ( $row = $results->fetch() ) !== false ) {
-				$map[$row['customer.group.id']] = $this->createItemBase( $row );
+				$items[$row['customer.group.id']] = $this->createItemBase( $row );
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -561,7 +561,7 @@ class Standard
 			throw $e;
 		}
 
-		return $map;
+		return $items;
 	}
 
 

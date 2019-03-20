@@ -38,13 +38,12 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'tag.typeid' => array(
-			'code' => 'tag.typeid',
-			'internalcode' => 'mtag."typeid"',
-			'label' => 'Type id',
-			'type' => 'integer',
-			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
-			'public' => false,
+		'tag.type' => array(
+			'code' => 'tag.type',
+			'internalcode' => 'mtag."type"',
+			'label' => 'Type',
+			'type' => 'string',
+			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 		),
 		'tag.label' => array(
 			'code' => 'tag.label',
@@ -113,37 +112,29 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param integer[] $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Tag\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		$path = 'mshop/tag/manager/submanagers';
-		foreach( $this->getContext()->getConfig()->get( $path, array( 'type' ) ) as $domain ) {
+		foreach( $this->getContext()->getConfig()->get( $path, ['type'] ) as $domain ) {
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/tag/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/tag/manager/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Tag\Item\Iface New tag item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['tag.siteid'] = $this->getContext()->getLocale()->getSiteId();
-
-		if( $type !== null )
-		{
-			$values['tag.typeid'] = $this->getTypeId( $type, $domain );
-			$values['tag.type'] = $type;
-		}
-
 		return $this->createItemBase( $values );
 	}
 
@@ -153,7 +144,7 @@ class Standard
 	 *
 	 * @param \Aimeos\MShop\Tag\Item\Iface $item Tag item which should be saved
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Tag\Item\Iface Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -253,7 +244,7 @@ class Standard
 			$stmt = $this->getCachedStatement( $conn, $path );
 
 			$stmt->bind( 1, $item->getLanguageId() );
-			$stmt->bind( 2, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 2, $item->getType() );
 			$stmt->bind( 3, $item->getDomain() );
 			$stmt->bind( 4, $item->getLabel() );
 			$stmt->bind( 5, $date ); //mtime
@@ -326,7 +317,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Tag\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -361,14 +353,15 @@ class Standard
 		 * @see mshop/tag/manager/standard/count/ansi
 		 */
 		$path = 'mshop/tag/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
 	/**
 	 * Returns tag tag item with given Id.
 	 *
-	 * @param integer $id Id of the tag tag item
+	 * @param string $id Id of the tag tag item
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Tag\Item\Iface Returns the tag tag item of the given id
@@ -384,13 +377,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/tag/manager/submanagers';
-
-		return $this->getResourceTypeBase( 'tag', $path, array( 'type' ), $withsub );
+		return $this->getResourceTypeBase( 'tag', $path, [], $withsub );
 	}
 
 
@@ -398,7 +390,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array Returns a list of attribtes implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -421,7 +413,7 @@ class Standard
 		 */
 		$path = 'mshop/tag/manager/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'type' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -435,7 +427,7 @@ class Standard
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$items = $map = $typeIds = [];
+		$items = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -591,10 +583,8 @@ class Standard
 			$cfgPathCount = 'mshop/tag/manager/standard/count';
 
 			$results = $this->searchItemsBase( $conn, $search, $cfgPathSearch, $cfgPathCount, $required, $total, $level );
-			while( ( $row = $results->fetch() ) !== false )
-			{
-				$map[$row['tag.id']] = $row;
-				$typeIds[$row['tag.typeid']] = null;
+			while( ( $row = $results->fetch() ) !== false ) {
+				$items[$row['tag.id']] = $this->createItemBase( $row );
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -605,26 +595,6 @@ class Standard
 			throw $e;
 		}
 
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', 'tag.type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[$row['tag.typeid']] ) )
-				{
-					$row['tag.type'] = $typeItems[$row['tag.typeid']]->getCode();
-					$row['tag.typename'] = $typeItems[$row['tag.typeid']]->getName();
-				}
-
-				$items[$id] = $this->createItemBase( $row );
-			}
-		}
-
 		return $items;
 	}
 
@@ -633,8 +603,7 @@ class Standard
 	 * Returns a new manager for tag extensions
 	 *
 	 * @param string $manager Name of the sub manager type in lower case
-	 * @param string|null $name Name of the implementation, will be from
-	 * configuration (or Default) if null
+	 * @param string|null $name Name of the implementation, will be from configuration (or Standard) if null
 	 * @return \Aimeos\MShop\Common\Manager\Iface Manager for different extensions, e.g tag types, tag lists etc.
 	 */
 	public function getSubManager( $manager, $name = null )
@@ -756,13 +725,12 @@ class Standard
 	 * Creates new tag item object.
 	 *
 	 * @see \Aimeos\MShop\Tag\Item\Standard Default tag item
-	 * @param array $values Possible optional array keys can be given: id, typeid, langid, type, label
+	 * @param array $values Possible optional array keys can be given: id, type, langid, type, label
 	 * @return \Aimeos\MShop\Tag\Item\Standard New tag item object
 	 */
 	protected function createItemBase( array $values = [] )
 	{
 		$values['languageid'] = $this->languageId;
-
 		return new \Aimeos\MShop\Tag\Item\Standard( $values );
 	}
 }

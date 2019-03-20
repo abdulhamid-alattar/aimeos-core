@@ -22,13 +22,13 @@ class CategoryTest extends \PHPUnit\Framework\TestCase
 	{
 		$this->context = \TestHelperMShop::getContext();
 
-		$servManager = \Aimeos\MShop\Factory::createManager( $this->context, 'service' );
+		$servManager = \Aimeos\MShop::create( $this->context, 'service' );
 		$this->servItem = $servManager->createItem();
 
 		$this->mockProvider = $this->getMockBuilder( \Aimeos\MShop\Service\Provider\Decorator\Category::class )
 			->disableOriginalConstructor()->getMock();
 
-		$this->basket = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->context )
+		$this->basket = \Aimeos\MShop\Order\Manager\Factory::create( $this->context )
 			->getSubManager( 'base' )->createItem();
 
 		$this->object = new \Aimeos\MShop\Service\Provider\Decorator\Category( $this->mockProvider, $this->context, $this->servItem );
@@ -219,10 +219,10 @@ class CategoryTest extends \PHPUnit\Framework\TestCase
 
 	protected function getOrderProduct( $code )
 	{
-		$productManager = \Aimeos\MShop\Factory::createManager( $this->context, 'product' );
+		$productManager = \Aimeos\MShop::create( $this->context, 'product' );
 		$product = $productManager->findItem( $code );
 
-		$orderProductManager = \Aimeos\MShop\Factory::createManager( $this->context, 'order/base/product' );
+		$orderProductManager = \Aimeos\MShop::create( $this->context, 'order/base/product' );
 		$orderProduct = $orderProductManager->createItem()->copyFrom( $product );
 
 		return $orderProduct;

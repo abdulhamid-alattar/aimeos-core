@@ -30,7 +30,7 @@ class Factory
 	 * @throws \Aimeos\MShop\Stock\Exception|\Aimeos\MShop\Exception If requested manager
 	 * implementation couldn't be found or initialisation fails
 	 */
-	public static function createManager( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
+	public static function create( \Aimeos\MShop\Context\Item\Iface $context, $name = null )
 	{
 		/** mshop/stock/manager/name
 		 * Class name of the used stock manager implementation
@@ -78,7 +78,7 @@ class Factory
 		$iface = \Aimeos\MShop\Stock\Manager\Iface::class;
 		$classname = '\Aimeos\MShop\Stock\Manager\\' . $name;
 
-		$manager = self::createManagerBase( $context, $classname, $iface );
+		$manager = self::createManager( $context, $classname, $iface );
 
 		/** mshop/stock/manager/decorators/excludes
 		 * Excludes decorators added by the "common" option from the stock manager

@@ -80,15 +80,24 @@ class Shipping
 	 * Subscribes itself to a publisher
 	 *
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $p Object implementing publisher interface
+	 * @return \Aimeos\MShop\Plugin\Provider\Iface Plugin object for method chaining
 	 */
 	public function register( \Aimeos\MW\Observer\Publisher\Iface $p )
 	{
-		$p->addListener( $this->getObject(), 'addProduct.after' );
-		$p->addListener( $this->getObject(), 'deleteProduct.after' );
-		$p->addListener( $this->getObject(), 'addService.after' );
-		$p->addListener( $this->getObject(), 'deleteService.after' );
-		$p->addListener( $this->getObject(), 'addCoupon.after' );
-		$p->addListener( $this->getObject(), 'deleteCoupon.after' );
+		$plugin = $this->getObject();
+
+		$p->attach( $plugin, 'addCoupon.after' );
+		$p->attach( $plugin, 'deleteCoupon.after' );
+		$p->attach( $plugin, 'setCoupons.after' );
+		$p->attach( $plugin, 'setCoupon.after' );
+		$p->attach( $plugin, 'addProduct.after' );
+		$p->attach( $plugin, 'deleteProduct.after' );
+		$p->attach( $plugin, 'setProducts.after' );
+		$p->attach( $plugin, 'addService.after' );
+		$p->attach( $plugin, 'deleteService.after' );
+		$p->attach( $plugin, 'setServices.after' );
+
+		return $this;
 	}
 
 
@@ -98,57 +107,58 @@ class Shipping
 	 * @param \Aimeos\MW\Observer\Publisher\Iface $order Shop basket instance implementing publisher interface
 	 * @param string $action Name of the action to listen for
 	 * @param mixed $value Object or value changed in publisher
+	 * @return mixed Modified value parameter
 	 */
 	public function update( \Aimeos\MW\Observer\Publisher\Iface $order, $action, $value = null )
 	{
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Order\Item\Base\Iface::class, $order );
 
-		$config = $this->getItemBase()->getConfig();
-		if( !isset( $config['threshold'] ) ) { return true; }
+		$services = $order->getServices();
+		$currency = $order->getPrice()->getCurrencyId();
+		$type = \Aimeos\MShop\Order\Item\Base\Service\Base::TYPE_DELIVERY;
+		$threshold = $this->getItemBase()->getConfigValue( 'threshold/' . $currency );
 
-		try
+		if( $threshold && isset( $services[$type] ) )
 		{
-			foreach( $order->getService( 'delivery' ) as $delivery ) {
-				$this->checkThreshold( $order, $delivery->getPrice(), $config['threshold'] );
-			}
-		}
-		catch( \Aimeos\MShop\Order\Exception $oe ) {} // no delivery item available yet
+			foreach( $services[$type] as $key => $service )
+			{
+				$price = $service->getPrice();
 
-		return true;
+				if( $this->checkThreshold( $order->getProducts(), $threshold ) ) {
+					$price = $price->setRebate( $price->getCosts() )->setCosts( '0.00' );
+				} else {
+					$price = $price->setCosts( $price->getRebate() )->setRebate( '0.00' );
+				}
+
+				$services[$type][$key] = $service->setPrice( $price );
+			}
+
+			$order->setServices( $services );
+		}
+
+		return $value;
 	}
 
 
 	/**
 	 * Tests if the shipping threshold is reached and updates the price accordingly
 	 *
-	 * @param \Aimeos\MShop\Order\Item\Base\Iface $order Basket object
-	 * @param \Aimeos\MShop\Price\Item\Iface $price Delivery price item
+	 * @param \Aimeos\MShop\Order\Item\Base\Product\Iface[] $orderProducts List of ordered products
 	 * @param array $threshold Associative list of currency/threshold pairs
+	 * @return boolean True if threshold is reached, false if not
 	 */
-	protected function checkThreshold( \Aimeos\MShop\Order\Item\Base\Iface $order,
-		\Aimeos\MShop\Price\Item\Iface $price, array $threshold )
+	protected function checkThreshold( array $orderProducts, $threshold )
 	{
-		$currency = $price->getCurrencyId();
+		$sum = \Aimeos\MShop::create( $this->getContext(), 'price' )->createItem();
 
-		if( !isset( $threshold[$currency] ) ) {
-			return;
+		foreach( $orderProducts as $product ) {
+			$sum = $sum->addItem( $product->getPrice(), $product->getQuantity() );
 		}
 
-		$sum = \Aimeos\MShop\Factory::createManager( $this->getContext(), 'price' )->createItem();
-
-		foreach( $order->getProducts() as $product ) {
-			$sum->addItem( $product->getPrice(), $product->getQuantity() );
+		if( $sum->getValue() + $sum->getRebate() >= $threshold ) {
+			return true;
 		}
 
-		if( $sum->getValue() + $sum->getRebate() >= $threshold[$currency] && $price->getCosts() > '0.00' )
-		{
-			$price->setRebate( $price->getCosts() );
-			$price->setCosts( '0.00' );
-		}
-		else if( $sum->getValue() + $sum->getRebate() < $threshold[$currency] && $price->getRebate() > '0.00' )
-		{
-			$price->setCosts( $price->getRebate() );
-			$price->setRebate( '0.00' );
-		}
+		return false;
 	}
 }

@@ -181,7 +181,7 @@ abstract class Base
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Iface $order Order invoice object to process
 	 * @param array $params Request parameter if available
-	 * @return \Aimeos\MShop\Common\Item\Helper\Form\Standard|null Form object or null
+	 * @return \Aimeos\MShop\Common\Helper\Form\Standard|null Form object or null
 	 */
 	public function process( \Aimeos\MShop\Order\Item\Iface $order, array $params = [] )
 	{
@@ -242,10 +242,11 @@ abstract class Base
 	 *
 	 * @param \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem Order service item that will be added to the basket
 	 * @param array $attributes Attribute key/value pairs entered by the customer during the checkout process
+	 * @return \Aimeos\MShop\Order\Item\Base\Service\Iface Order service item with attributes added
 	 */
 	public function setConfigFE( \Aimeos\MShop\Order\Item\Base\Service\Iface $orderServiceItem, array $attributes )
 	{
-		$this->object->setConfigFE( $orderServiceItem, $attributes );
+		return $this->object->setConfigFE( $orderServiceItem, $attributes );
 	}
 
 
@@ -265,7 +266,8 @@ abstract class Base
 	/**
 	 * Updates the order status sent by payment gateway notifications
 	 *
-	 * @param \Psr\Http\Message\ServerRequestInterface Request object
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object
+	 * @param \Psr\Http\Message\ResponseInterface $response Response object
 	 * @return \Psr\Http\Message\ResponseInterface Response object
 	 */
 	public function updatePush( \Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response )
@@ -277,7 +279,7 @@ abstract class Base
 	/**
 	 * Updates the orders for whose status updates have been received by the confirmation page
 	 *
-	 * @param ServerRequestInterface $request Request object with parameters and request body
+	 * @param \Psr\Http\Message\ServerRequestInterface $request Request object with parameters and request body
 	 * @param \Aimeos\MShop\Order\Item\Iface $orderItem Order item that should be updated
 	 * @return \Aimeos\MShop\Order\Item\Iface Updated order item
 	 * @throws \Aimeos\MShop\Service\Exception If updating the orders failed

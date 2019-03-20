@@ -39,10 +39,10 @@ class Standard
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_INT,
 			'public' => false,
 		),
-		'plugin.typeid' => array(
+		'plugin.type' => array(
 			'label' => 'Type ID',
-			'code' => 'plugin.typeid',
-			'internalcode' => 'mplu."typeid"',
+			'code' => 'plugin.type',
+			'internalcode' => 'mplu."type"',
 			'type' => 'string',
 			'internaltype' => \Aimeos\MW\DB\Statement\Base::PARAM_STR,
 			'public' => false,
@@ -125,46 +125,38 @@ class Standard
 	/**
 	 * Removes old entries from the storage.
 	 *
-	 * @param array $siteids List of IDs for sites whose entries should be deleted
+	 * @param string[] $siteids List of IDs for sites whose entries should be deleted
+	 * @return \Aimeos\MShop\Plugin\Manager\Iface Manager object for chaining method calls
 	 */
 	public function cleanup( array $siteids )
 	{
 		$path = 'mshop/plugin/manager/submanagers';
-		foreach( $this->getContext()->getConfig()->get( $path, array( 'type' ) ) as $domain ) {
+		foreach( $this->getContext()->getConfig()->get( $path, ['type'] ) as $domain ) {
 			$this->getObject()->getSubManager( $domain )->cleanup( $siteids );
 		}
 
-		$this->cleanupBase( $siteids, 'mshop/plugin/manager/standard/delete' );
+		return $this->cleanupBase( $siteids, 'mshop/plugin/manager/standard/delete' );
 	}
 
 
 	/**
 	 * Creates a new empty item instance
 	 *
-	 * @param string|null Type the item should be created with
-	 * @param string|null Domain of the type the item should be created with
 	 * @param array $values Values the item should be initialized with
 	 * @return \Aimeos\MShop\Plugin\Item\Iface New plugin item object
 	 */
-	public function createItem( $type = null, $domain = null, array $values = [] )
+	public function createItem( array $values = [] )
 	{
 		$values['plugin.siteid'] = $this->getContext()->getLocale()->getSiteId();
-
-		if( $type !== null )
-		{
-			$values['plugin.typeid'] = $this->getTypeId( $type, 'plugin' );
-			$values['plugin.type'] = $type;
-		}
-
 		return $this->createItemBase( $values );
 	}
 
 
 	/**
-	 * Creates a criteria object for searching.
+	 * Creates a search critera object
 	 *
-	 * @param boolean $default Prepopulate object with default criterias
-	 * @return \Aimeos\MW\Criteria\Iface
+	 * @param boolean $default Add default criteria (optional)
+	 * @return \Aimeos\MW\Criteria\Iface New search criteria object
 	 */
 	public function createSearch( $default = false )
 	{
@@ -179,7 +171,8 @@ class Standard
 	/**
 	 * Removes multiple items specified by ids in the array.
 	 *
-	 * @param array $ids List of IDs
+	 * @param string[] $ids List of IDs
+	 * @return \Aimeos\MShop\Plugin\Manager\Iface Manager object for chaining method calls
 	 */
 	public function deleteItems( array $ids )
 	{
@@ -214,7 +207,8 @@ class Standard
 		 * @see mshop/plugin/manager/standard/count/ansi
 		 */
 		$path = 'mshop/plugin/manager/standard/delete';
-		$this->deleteItemsBase( $ids, $path );
+
+		return $this->deleteItemsBase( $ids, $path );
 	}
 
 
@@ -222,13 +216,12 @@ class Standard
 	 * Returns the available manager types
 	 *
 	 * @param boolean $withsub Return also the resource type of sub-managers if true
-	 * @return array Type of the manager and submanagers, subtypes are separated by slashes
+	 * @return string[] Type of the manager and submanagers, subtypes are separated by slashes
 	 */
 	public function getResourceType( $withsub = true )
 	{
 		$path = 'mshop/plugin/manager/submanagers';
-
-		return $this->getResourceTypeBase( 'plugin', $path, array( 'type'), $withsub );
+		return $this->getResourceTypeBase( 'plugin', $path, [], $withsub );
 	}
 
 
@@ -236,7 +229,7 @@ class Standard
 	 * Returns the attributes that can be used for searching.
 	 *
 	 * @param boolean $withsub Return also attributes of sub-managers if true
-	 * @return array List of attribute items implementing \Aimeos\MW\Criteria\Attribute\Iface
+	 * @return \Aimeos\MW\Criteria\Attribute\Iface[] List of search attribute items
 	 */
 	public function getSearchAttributes( $withsub = true )
 	{
@@ -259,7 +252,7 @@ class Standard
 		 */
 		$path = 'mshop/plugin/manager/submanagers';
 
-		return $this->getSearchAttributesBase( $this->searchConfig, $path, array( 'type' ), $withsub );
+		return $this->getSearchAttributesBase( $this->searchConfig, $path, [], $withsub );
 	}
 
 
@@ -279,7 +272,7 @@ class Standard
 	/**
 	 * Returns plugin item specified by the given ID.
 	 *
-	 * @param integer $id Unique ID of the plugin item
+	 * @param string $id Unique ID of the plugin item
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param boolean $default Add default criteria
 	 * @return \Aimeos\MShop\Plugin\Item\Iface Returns the plugin item of the given id
@@ -294,9 +287,9 @@ class Standard
 	/**
 	 * Saves a new or modified plugin to the storage.
 	 *
-	 * @param \Aimeos\MShop\Common\Item\Iface $item Plugin item
+	 * @param \Aimeos\MShop\Plugin\Item\Iface $item Plugin item
 	 * @param boolean $fetch True if the new ID should be returned in the item
-	 * @return \Aimeos\MShop\Common\Item\Iface $item Updated item including the generated ID
+	 * @return \Aimeos\MShop\Plugin\Item\Iface $item Updated item including the generated ID
 	 */
 	public function saveItem( \Aimeos\MShop\Common\Item\Iface $item, $fetch = true )
 	{
@@ -395,7 +388,7 @@ class Standard
 
 			$stmt = $this->getCachedStatement( $conn, $path );
 
-			$stmt->bind( 1, $item->getTypeId(), \Aimeos\MW\DB\Statement\Base::PARAM_INT );
+			$stmt->bind( 1, $item->getType() );
 			$stmt->bind( 2, $item->getLabel() );
 			$stmt->bind( 3, $item->getProvider() );
 			$stmt->bind( 4, json_encode( $item->getConfig() ) );
@@ -474,11 +467,11 @@ class Standard
 	 * @param \Aimeos\MW\Criteria\Iface $search Search criteria object
 	 * @param string[] $ref List of domains to fetch list items and referenced items for
 	 * @param integer|null &$total Number of items that are available in total
-	 * @return array List of plugin items implementing \Aimeos\MShop\Plugin\Item\Iface
+	 * @return \Aimeos\MShop\Plugin\Item\Iface[] List of plugin items
 	 */
 	public function searchItems( \Aimeos\MW\Criteria\Iface $search, array $ref = [], &$total = null )
 	{
-		$items = $map = $typeIds = [];
+		$items = [];
 		$context = $this->getContext();
 
 		$dbm = $context->getDatabaseManager();
@@ -645,8 +638,7 @@ class Standard
 					$this->getContext()->getLogger()->log( $msg, \Aimeos\MW\Logger\Base::WARN );
 				}
 
-				$map[$row['plugin.id']] = $row;
-				$typeIds[$row['plugin.typeid']] = null;
+				$items[$row['plugin.id']] = $this->createItemBase( $row );
 			}
 
 			$dbm->release( $conn, $dbname );
@@ -657,26 +649,6 @@ class Standard
 			throw $e;
 		}
 
-		if( !empty( $typeIds ) )
-		{
-			$typeManager = $this->getObject()->getSubManager( 'type' );
-			$typeSearch = $typeManager->createSearch();
-			$typeSearch->setConditions( $typeSearch->compare( '==', 'plugin.type.id', array_keys( $typeIds ) ) );
-			$typeSearch->setSlice( 0, $search->getSliceSize() );
-			$typeItems = $typeManager->searchItems( $typeSearch );
-
-			foreach( $map as $id => $row )
-			{
-				if( isset( $typeItems[$row['plugin.typeid']] ) )
-				{
-					$row['plugin.type'] = $typeItems[$row['plugin.typeid']]->getCode();
-					$row['plugin.typename'] = $typeItems[$row['plugin.typeid']]->getName();
-				}
-
-				$items[$id] = $this->createItemBase( $row );
-			}
-		}
-
 		return $items;
 	}
 
@@ -684,7 +656,7 @@ class Standard
 	/**
 	 * Creates a new plugin object.
 	 *
-	 * @param array Associative list of item key/value pairs
+	 * @param array $values Associative list of item key/value pairs
 	 * @return \Aimeos\MShop\Plugin\Item\Iface New plugin object
 	 */
 	protected function createItemBase( array $values = [] )

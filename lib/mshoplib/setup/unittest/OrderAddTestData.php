@@ -22,18 +22,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 	 */
 	public function getPreDependencies()
 	{
-		return array( 'MShopSetLocale', 'AttributeAddTestData', 'CustomerAddTestData', 'PluginAddTestData', 'ProductAddTestData', 'ServiceAddTestData' );
-	}
-
-
-	/**
-	 * Returns the list of task names which depends on this task.
-	 *
-	 * @return string[] List of task names
-	 */
-	public function getPostDependencies()
-	{
-		return [];
+		return ['CustomerAddTestData', 'ProductAddTestData', 'PluginAddTestData', 'ServiceAddTestData'];
 	}
 
 
@@ -45,10 +34,10 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 		\Aimeos\MW\Common\Base::checkClass( \Aimeos\MShop\Context\Item\Iface::class, $this->additional );
 
 		$this->msg( 'Adding order test data', 0 );
-		$this->additional->setEditor( 'core:unittest' );
+		$this->additional->setEditor( 'core:lib/mshoplib' );
 
-		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::createManager( $this->additional, 'Standard' );
-		$orderManager = \Aimeos\MShop\Order\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$localeManager = \Aimeos\MShop\Locale\Manager\Factory::create( $this->additional, 'Standard' );
+		$orderManager = \Aimeos\MShop\Order\Manager\Factory::create( $this->additional, 'Standard' );
 		$orderBaseManager = $orderManager->getSubManager( 'base' );
 
 		$search = $orderBaseManager->createSearch();
@@ -66,6 +55,8 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 			throw new \Aimeos\MShop\Exception( sprintf( 'No file "%1$s" found for order domain', $path ) );
 		}
 
+		$this->additional->setLocale( $this->additional->getLocale()->setCurrencyId( 'EUR' ) );
+
 		$bases = $this->addOrderBaseData( $localeManager, $orderBaseManager, $testdata );
 		$bases['items'] = $this->addOrderBaseProductData( $orderBaseManager, $bases, $testdata );
 		$bases['items'] = $this->addOrderBaseServiceData( $orderBaseManager, $bases, $testdata );
@@ -74,6 +65,8 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 		foreach( $bases['items'] as $baseItem ) {
 			$orderBaseManager->saveItem( $baseItem, false );
 		}
+
+		$this->additional->setLocale( $this->additional->getLocale()->setCurrencyId( null ) );
 
 		$this->addOrderData( $orderManager, $bases['ids'], $testdata );
 
@@ -187,7 +180,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 		$servIds = $this->getServiceIds( $testdata );
 		$orderBaseServiceManager = $orderBaseManager->getSubManager( 'service', 'Standard' );
 		$orderBaseServiceAttrManager = $orderBaseServiceManager->getSubManager( 'attribute', 'Standard' );
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$priceManager = \Aimeos\MShop::create( $this->additional, 'price' );
 		$ordServ = $orderBaseServiceManager->createItem();
 
 		$orderBaseManager->begin();
@@ -251,7 +244,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 		$products = $this->getProductItems( $testdata );
 		$orderBaseProductManager = $orderBaseManager->getSubManager( 'product', 'Standard' );
 		$orderBaseProductAttrManager = $orderBaseProductManager->getSubManager( 'attribute', 'Standard' );
-		$priceManager = \Aimeos\MShop\Price\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$priceManager = \Aimeos\MShop::create( $this->additional, 'price' );
 
 		$orderBaseManager->begin();
 
@@ -300,10 +293,8 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$priceItem->setTaxRate( $dataset['taxrate'] );
 			$ordProdItem->setPrice( $priceItem );
 
-			$orderBaseProductManager->saveItem( $ordProdItem );
-
 			$bases['items'][$dataset['baseid']]->addProduct( $ordProdItem, $dataset['pos'] ); //adds Products to orderbase
-			$ordProds[$key] = $ordProdItem->getId();
+			$ordProds[$key] = $orderBaseProductManager->saveItem( $ordProdItem )->getId();
 		}
 
 		$this->addOrderBaseProductAttributeData( $orderBaseProductAttrManager, $testdata, $ordProds, $products );
@@ -327,7 +318,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 		array $testdata, array $ordProds, array $products )
 	{
 		$attrCodes = [];
-		$attributeManager = \Aimeos\MShop\Attribute\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$attributeManager = \Aimeos\MShop::create( $this->additional, 'attribute' );
 		$attributes = $attributeManager->searchItems( $attributeManager->createSearch() );
 
 		foreach( $attributes as $attrItem ) {
@@ -473,7 +464,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 			$customercodes[] = $dataset['customerid'];
 		}
 
-		$customerManager = \Aimeos\MShop\Customer\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$customerManager = \Aimeos\MShop::create( $this->additional, 'customer' );
 		$search = $customerManager->createSearch();
 		$search->setConditions( $search->compare( '==', 'customer.code', $customercodes ) );
 
@@ -494,7 +485,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 	protected function getProductItems( array $testdata )
 	{
 		$codes = $items = [];
-		$productManager = \Aimeos\MShop\Product\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$productManager = \Aimeos\MShop::create( $this->additional, 'product' );
 
 		foreach( $testdata['order/base/product'] as $key => $dataset )
 		{
@@ -524,7 +515,7 @@ class OrderAddTestData extends \Aimeos\MW\Setup\Task\Base
 	protected function getServiceIds( array $testdata )
 	{
 		$services = $servIds = [];
-		$serviceManager = \Aimeos\MShop\Service\Manager\Factory::createManager( $this->additional, 'Standard' );
+		$serviceManager = \Aimeos\MShop::create( $this->additional, 'service' );
 
 		foreach( $testdata['order/base/service'] as $key => $dataset )
 		{

@@ -19,14 +19,17 @@ namespace Aimeos\MShop\Service\Manager;
  * @subpackage Service
  */
 abstract class Base
-	extends \Aimeos\MShop\Common\Manager\ListRef\Base
+	extends \Aimeos\MShop\Common\Manager\Base
 {
+	use \Aimeos\MShop\Common\Manager\ListRef\Traits;
+
+
 	/**
 	 * Returns the service provider which is responsible for the service item.
 	 *
 	 * @param \Aimeos\MShop\Service\Item\Iface $item Delivery or payment service item object
 	 * @param string $type Service type code
-	 * @return \Aimeos\MShop\Service\Provider\Iface Returns a service provider implementing \Aimeos\MShop\Service\Provider\Iface
+	 * @return \Aimeos\MShop\Service\Provider\Iface Service provider object
 	 * @throws \Aimeos\MShop\Service\Exception If provider couldn't be found
 	 */
 	public function getProvider( \Aimeos\MShop\Service\Item\Iface $item, $type )
